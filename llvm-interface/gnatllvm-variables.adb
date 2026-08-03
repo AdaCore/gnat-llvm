@@ -2534,7 +2534,12 @@ package body GNATLLVM.Variables is
 
       --  Generate debug information
 
-      Create_Local_Variable_Debug_Data (E, LLVM_Var);
+      if Is_A_Global_Variable (LLVM_Var)
+      then
+         Create_Global_Variable_Debug_Data (E, LLVM_Var);
+      else
+         Create_Local_Variable_Debug_Data (E, LLVM_Var);
+      end if;
 
    end Emit_Declaration;
 

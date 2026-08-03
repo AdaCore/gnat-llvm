@@ -1613,26 +1613,38 @@ package body GNATLLVM.DebugInfo is
          else "");
       Ext_Name  : constant String     := Get_Ext_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
+      Var_Data  : constant Metadata_T := Get_Debug_Metadata (E);
+      MD        : Metadata_T := No_Metadata_T;
 
    begin
-      --  For globals, we only do something if it's not imported
-
       if Emit_Debug_Info and then Present (Type_Data)
-        and then Is_A_Global_Variable (V) and then not Is_Imported (E)
+         and then Is_A_Global_Variable (V)
+         and then No (Var_Data)
       then
-         declare
-            MD : constant Metadata_T :=
+         if Is_Imported (E) then
+            --  Only emit an import if it appeared in the source.
+            if Comes_From_Source (E) then
+               MD := Create_Global_Variable_Declaration
+                 (DI_Builder, Get_Scope_For (E), Name,
+                  (if Ext_Name = Full_Name then "" else Ext_Name),
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Physical_Line_Number (S), Type_Data, False,
+                  Empty_DI_Expr, No_Metadata_T, Get_Type_Alignment (GT));
+            end if;
+         else
+            MD :=
               DI_Create_Global_Variable_Expression
                 (Get_Scope_For (E), Name,
                  (if Ext_Name = Full_Name then "" else Ext_Name),
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
                  Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
                  No_Metadata_T, Get_Type_Alignment (GT));
-         begin
+         end if;
+         if Present (MD) then
             Set_Debug_Metadata
               (E, DI_Global_Variable_Expression_Get_Variable (MD));
             Global_Set_Metadata (+V, 0, MD);
-         end;
+         end if;
       end if;
    end Create_Global_Variable_Debug_Data;
 

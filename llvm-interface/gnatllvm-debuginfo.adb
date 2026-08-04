@@ -95,13 +95,12 @@ package body GNATLLVM.DebugInfo is
           Post => Present (Create_Location'Result);
    --  Return debug metadata for a location
 
-   function Create_Pointer_To
-     (MD : Metadata_T; E : Entity_Id) return Metadata_T is
+   function Create_Pointer_To (MD : Metadata_T) return Metadata_T is
      (Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size))
-     with Pre  => Present (MD) and then Present (E),
+     with Pre  => Present (MD),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
-   --  pointer to that type. E and Suffix is used for naming the type.
+   --  pointer to that type.
 
    function Convert_Bound_To_Metadata
      (GT : GL_Type; Dimension : Nat; Lower_Bound : Boolean;
@@ -565,7 +564,7 @@ package body GNATLLVM.DebugInfo is
 
             begin
                if Present (MD) and then Param_Is_Reference (P) then
-                  MD := Create_Pointer_To (MD, P);
+                  MD := Create_Pointer_To (MD);
                end if;
 
                Types (Idx) := MD;
@@ -583,12 +582,12 @@ package body GNATLLVM.DebugInfo is
          elsif No (Ret_MD) then
             Types (0) := No_Metadata_T;
          elsif LRK = Subprog_Return and then RK = RK_By_Reference then
-            Types (0) := Create_Pointer_To (Ret_MD, E);
+            Types (0) := Create_Pointer_To (Ret_MD);
          elsif LRK = Subprog_Return and then RK = Value_Return then
             Types (0) := Ret_MD;
          elsif RK = Return_By_Parameter then
             Types (0) := No_Metadata_T;
-            Types (Idx) := Create_Pointer_To (Ret_MD, E);
+            Types (Idx) := Create_Pointer_To (Ret_MD);
          else
             Types (0) := No_Metadata_T;
          end if;
@@ -890,8 +889,7 @@ package body GNATLLVM.DebugInfo is
       Bounds_Size : ULL;
       Bounds_MD   : constant Metadata_T :=
         Create_Bounds_Type_Data (DT, Bounds_Size);
-      P_Bounds_MD : constant Metadata_T :=
-        Create_Pointer_To (Bounds_MD, Full_Etype (GT));
+      P_Bounds_MD : constant Metadata_T := Create_Pointer_To (Bounds_MD);
       Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
       P_Comp_MD   : Metadata_T;
       Field_MDs   : Metadata_Array (1 .. 2);
@@ -919,7 +917,7 @@ package body GNATLLVM.DebugInfo is
                                                 No_Metadata_T, 0, 0, Align,
                                                 Comp_MD, No_Metadata_T,
                                                 Ranges);
-      P_Comp_MD := Create_Pointer_To (P_Comp_MD, Full_Component_Type (DT));
+      P_Comp_MD := Create_Pointer_To (P_Comp_MD);
 
       --  Add fields for pointers to bounds and component and create debug
       --  data for that structure.

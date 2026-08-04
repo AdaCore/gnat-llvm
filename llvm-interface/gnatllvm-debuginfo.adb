@@ -1637,11 +1637,11 @@ package body GNATLLVM.DebugInfo is
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
                  Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
                  No_Metadata_T, Get_Type_Alignment (GT));
+            Global_Set_Metadata (+V, 0, MD);
          end if;
          if Present (MD) then
             Set_Debug_Metadata
               (E, DI_Global_Variable_Expression_Get_Variable (MD));
-            Global_Set_Metadata (+V, 0, MD);
          end if;
       end if;
    end Create_Global_Variable_Debug_Data;

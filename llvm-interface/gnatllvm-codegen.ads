@@ -131,10 +131,11 @@ package GNATLLVM.Codegen is
    No_Builtins             : Boolean       := False;
    --  Switch options for optimization
 
-   Enable_Fuzzer            : Boolean       := False;
-   Enable_Address_Sanitizer : Boolean       := False;
-   San_Cov_Allow_List       : String_Access := null;
-   San_Cov_Ignore_List      : String_Access := null;
+   Enable_Fuzzer               : Boolean       := False;
+   Enable_Address_Sanitizer    : Boolean       := False;
+   Enable_HW_Address_Sanitizer : Boolean       := False;
+   San_Cov_Allow_List          : String_Access := null;
+   San_Cov_Ignore_List         : String_Access := null;
    --  Sanitizer options (including the fuzzer, which implies coverage
    --  sanitizer)
 

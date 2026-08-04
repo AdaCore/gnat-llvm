@@ -75,6 +75,10 @@ package body GNATLLVM.Codegen is
    procedure Process_Switch (S : String);
    --  Process one command-line switch
 
+   function Add_Maybe_With_Comma (S1, S2 : String) return String is
+     (if S1 = "" or else S2 = "" then S1 & S2 else S1 & "," & S2);
+   --  Concatenate S1 and S2, putting a comma in between if neither is empty
+
    --------------------------
    -- Initialize_GNAT_LLVM --
    --------------------------
@@ -101,10 +105,6 @@ package body GNATLLVM.Codegen is
       Len     : constant Integer := Last - First + 1;
       Idx     : Natural;
       To_Free : String_Access    := null;
-
-      function Add_Maybe_With_Comma (S1, S2 : String) return String is
-        ((if S1 = "" then S1 else S1 & ",") & S2);
-      --  Concatenate S1 and S2, putting a comma in between if S1 is empty
 
    begin
       --  ??? At some point, this and Is_Back_End_Switch need to have
@@ -416,6 +416,9 @@ package body GNATLLVM.Codegen is
                   Enable_Fuzzer := True;
                elsif Sanitizers (Current_Start .. Current_End) = "address" then
                   Enable_Address_Sanitizer := True;
+               elsif Sanitizers (Current_Start .. Current_End) = "hwaddress"
+               then
+                  Enable_HW_Address_Sanitizer := True;
                else
                   Early_Error
                     ("unsupported sanitizer: " &
@@ -740,11 +743,28 @@ package body GNATLLVM.Codegen is
       begin
          if Arch_Features /= "" then
             New_Features :=
-              new String'(Arch_Features & "," & Features.all);
+              new String'(Add_Maybe_With_Comma (Arch_Features, Features.all));
             Free (Features);
             Features := New_Features;
          end if;
       end;
+
+      --  The hardware-assisted address sanitizer replaces each global with
+      --  an alias whose address carries a tag in its top byte. The backend
+      --  must know about it and access globals via the GOT.
+      --  We follow what Clang does for this feature
+      --  (see clang/lib/Driver/SanitizerArgs.cpp).
+
+      if Enable_HW_Address_Sanitizer then
+         declare
+            New_Features : constant String :=
+              Add_Maybe_With_Comma (Features.all, "+tagged-globals");
+
+         begin
+            Free (Features);
+            Features := new String'(New_Features);
+         end;
+      end if;
 
       if ABI = null then
          declare
@@ -778,6 +798,18 @@ package body GNATLLVM.Codegen is
       Dispose_Target_Machine_Options (TM_Options);
 
       Enable_Init_Array (Target_Machine);
+
+      if Enable_Address_Sanitizer and then Enable_HW_Address_Sanitizer then
+         Early_Error
+           ("invalid argument '-fsanitize=address' not allowed with "
+            & "'-fsanitize=hwaddress'");
+      end if;
+
+      if Enable_HW_Address_Sanitizer
+        and then not Has_HW_Address_Sanitizer (Normalized_Target_Triple.all)
+      then
+         Early_Error ("-fsanitize=hwaddress not supported for this target");
+      end if;
 
       if Call_Graph_Section then
 
@@ -981,22 +1013,24 @@ package body GNATLLVM.Codegen is
                if LLVM_Optimize_Module
                     (Module,
                      Target_Machine,
-                     Code_Opt_Level           => Code_Opt_Level,
-                     Size_Opt_Level           => Size_Opt_Level,
-                     Need_Loop_Info           => Emit_C,
-                     Unroll_Loops             => Unroll_Loops,
-                     Loop_Vectorization       => Loop_Vectorization,
-                     SLP_Vectorization        => SLP_Vectorization,
-                     Merge_Functions          => Merge_Functions,
-                     Prepare_For_Thin_LTO     => Prepare_For_Thin_LTO,
-                     Prepare_For_LTO          => Prepare_For_LTO,
-                     Reroll_Loops             => Reroll_Loops,
-                     Enable_Fuzzer            => Enable_Fuzzer,
-                     Enable_Address_Sanitizer => Enable_Address_Sanitizer,
-                     San_Cov_Allow_List       => San_Cov_Allow_List,
-                     San_Cov_Ignore_List      => San_Cov_Ignore_List,
-                     Pass_Plugin_Names        => Plugins_C'Address,
-                     Error_Message            => Err_Msg'Address)
+                     Code_Opt_Level              => Code_Opt_Level,
+                     Size_Opt_Level              => Size_Opt_Level,
+                     Need_Loop_Info              => Emit_C,
+                     Unroll_Loops                => Unroll_Loops,
+                     Loop_Vectorization          => Loop_Vectorization,
+                     SLP_Vectorization           => SLP_Vectorization,
+                     Merge_Functions             => Merge_Functions,
+                     Prepare_For_Thin_LTO        => Prepare_For_Thin_LTO,
+                     Prepare_For_LTO             => Prepare_For_LTO,
+                     Reroll_Loops                => Reroll_Loops,
+                     Enable_Fuzzer               => Enable_Fuzzer,
+                     Enable_Address_Sanitizer    => Enable_Address_Sanitizer,
+                     Enable_HW_Address_Sanitizer =>
+                        Enable_HW_Address_Sanitizer,
+                     San_Cov_Allow_List          => San_Cov_Allow_List,
+                     San_Cov_Ignore_List         => San_Cov_Ignore_List,
+                     Pass_Plugin_Names           => Plugins_C'Address,
+                     Error_Message               => Err_Msg'Address)
                then
                   Error_Msg_N
                     ("could not optimize: " & Get_LLVM_Error_Msg (Err_Msg),

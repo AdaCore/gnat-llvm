@@ -1987,6 +1987,15 @@ package body GNATLLVM.GLValue is
       Add_Sanitize_Address_Attribute (+V);
    end Add_Sanitize_Address_Attribute;
 
+   ---------------------------------------
+   -- Add_Sanitize_HW_Address_Attribute --
+   ---------------------------------------
+
+   procedure Add_Sanitize_HW_Address_Attribute (V : GL_Value) is
+   begin
+      Add_Sanitize_HW_Address_Attribute (+V);
+   end Add_Sanitize_HW_Address_Attribute;
+
    ------------------------------------
    -- Add_No_Implicit_Float_Attribute --
    ------------------------------------

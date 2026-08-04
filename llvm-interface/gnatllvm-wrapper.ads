@@ -147,6 +147,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_Sanitize_Address_Attribute";
 
+   procedure Add_Sanitize_HW_Address_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Sanitize_HW_Address_Attribute";
+
    procedure Add_No_Implicit_Float_Attribute (Func : Value_T)
      with Import, Convention => C,
           External_Name => "Add_No_Implicit_Float_Attribute";
@@ -321,24 +325,25 @@ package GNATLLVM.Wrapper is
      with Pre => Present (MD), Inline;
 
    function LLVM_Optimize_Module
-     (Module                   : Module_T;
-      Target_Machine           : Target_Machine_T;
-      Code_Opt_Level           : Nat;
-      Size_Opt_Level           : Nat;
-      Need_Loop_Info           : Boolean;
-      Unroll_Loops             : Boolean;
-      Loop_Vectorization       : Boolean;
-      SLP_Vectorization        : Boolean;
-      Merge_Functions          : Boolean;
-      Prepare_For_Thin_LTO     : Boolean;
-      Prepare_For_LTO          : Boolean;
-      Reroll_Loops             : Boolean;
-      Enable_Fuzzer            : Boolean;
-      Enable_Address_Sanitizer : Boolean;
-      San_Cov_Allow_List       : String_Access;
-      San_Cov_Ignore_List      : String_Access;
-      Pass_Plugin_Names        : System.Address;
-      Error_Message            : System.Address) return Boolean;
+     (Module                      : Module_T;
+      Target_Machine              : Target_Machine_T;
+      Code_Opt_Level              : Nat;
+      Size_Opt_Level              : Nat;
+      Need_Loop_Info              : Boolean;
+      Unroll_Loops                : Boolean;
+      Loop_Vectorization          : Boolean;
+      SLP_Vectorization           : Boolean;
+      Merge_Functions             : Boolean;
+      Prepare_For_Thin_LTO        : Boolean;
+      Prepare_For_LTO             : Boolean;
+      Reroll_Loops                : Boolean;
+      Enable_Fuzzer               : Boolean;
+      Enable_Address_Sanitizer    : Boolean;
+      Enable_HW_Address_Sanitizer : Boolean;
+      San_Cov_Allow_List          : String_Access;
+      San_Cov_Ignore_List         : String_Access;
+      Pass_Plugin_Names           : System.Address;
+      Error_Message               : System.Address) return Boolean;
    --  Perform optimizations on the module. The function's interface mimics our
    --  LLVM bindings (e.g., LLVM.Core) by taking the address of a value of type
    --  Ptr_Err_Msg_Type for the optionally returned error message, and
@@ -503,6 +508,8 @@ package GNATLLVM.Wrapper is
    function Has_Call_Graph_Section (Triple : String) return Boolean;
    --  True when the target's object format is ELF, the only one LLVM can emit
    --  a .llvm.callgraph section into
+
+   function Has_HW_Address_Sanitizer (Triple : String) return Boolean;
 
    function Needs_Frame_Pointers (Triple : String) return Boolean;
 

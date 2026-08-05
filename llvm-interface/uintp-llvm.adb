@@ -16,12 +16,15 @@
 ------------------------------------------------------------------------------
 
 with Interfaces; use Interfaces;
+with Interfaces.C.Extensions;
 
 with stdint_h; use stdint_h;
 
 with LLVM.Core; use LLVM.Core;
 
 package body Uintp.LLVM is
+
+   use type Interfaces.C.Extensions.unsigned_long_long;
 
    subtype Unsigned_64 is Interfaces.Unsigned_64;
 
@@ -88,6 +91,43 @@ package body Uintp.LLVM is
       return UI_Is_In_Int_Range (U)
         or else Big_UI_To_Words (U)'Length = 1;
    end UI_Is_In_ULL_Range;
+
+   -----------------
+   -- UI_From_ULL --
+   -----------------
+
+   function UI_From_ULL (V : ULL) return Uint is
+     (if   V <= ULL (LLI'Last) then UI_From_LLI (LLI (V))
+      else UI_From_LLI (LLI (V / 2)) * Uint_2 + UI_From_LLI (LLI (V rem 2)));
+
+   -------------------
+   -- UI_From_Words --
+   -------------------
+
+   function UI_From_Words
+     (Words : Word_Array; Width : Pos; Is_Signed : Boolean) return Uint
+   is
+      Word_Modulus : constant Valid_Uint := UI_Expon (Uint_2, Nat'(64));
+      U            : Valid_Uint          := Uint_0;
+
+   begin
+      --  The low-order word comes first, so accumulate starting from the
+      --  high-order one.
+
+      for J in reverse Words'Range loop
+         U := U * Word_Modulus + UI_From_ULL (ULL (Words (J)));
+      end loop;
+
+      --  U is now the unsigned interpretation of the bit pattern. If a
+      --  signed interpretation is requested and the sign bit is set,
+      --  convert by subtracting 2 ** Width.
+
+      if Is_Signed and then U >= UI_Expon (Uint_2, Nat'(Width - 1)) then
+         U := U - UI_Expon (Uint_2, Width);
+      end if;
+
+      return U;
+   end UI_From_Words;
 
    -----------------
    -- UI_To_Words --

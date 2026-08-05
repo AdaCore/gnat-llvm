@@ -21,6 +21,8 @@ with Einfo.Utils; use Einfo.Utils;
 with Sem_Util;    use Sem_Util; use Sem_Util.Storage_Model_Support;
 with Snames;      use Snames;
 
+with Uintp.LLVM; use Uintp.LLVM;
+
 with GNATLLVM.MDType;  use GNATLLVM.MDType;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -1096,18 +1098,33 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a null pointer
 
+   function Fits_In_LLI (V : GL_Value) return Boolean is
+     (Const_Int_Fits_In_LLI (+V))
+     with Pre => Is_A_Constant_Int (V);
+   --  Return True iff the value of the constant integer V fits in LLI. This
+   --  looks at the significant bits of the value, not the width of its type:
+   --  a small value in a wide type (e.g. 1 in a 128-bit type) fits and stays
+   --  on the fast 64-bit path, and this is exactly the condition under which
+   --  Const_Int_Get_S_Ext_Value is defined.
+
+   function Fits_In_ULL (V : GL_Value) return Boolean is
+     (Const_Int_Fits_In_ULL (+V))
+     with Pre => Is_A_Constant_Int (V);
+   --  Likewise for ULL and Const_Int_Get_Z_Ext_Value
+
    function Get_Const_Int_Value (V : GL_Value) return LLI is
      (LLI (Const_Int_Get_S_Ext_Value (+V)))
-     with Pre => Is_A_Constant_Int (V);
-   --  V is a constant integer; get its value
+     with Pre => Is_A_Constant_Int (V) and then Fits_In_LLI (V);
+   --  V is a constant integer whose value fits in LLI; get that value.
+   --  Use UI_From_GL_Value to get the value of a constant of any width.
 
    function Get_Const_Int_Value_ULL (V : GL_Value) return ULL is
      (ULL (Const_Int_Get_Z_Ext_Value (+V)))
-     with Pre => Is_A_Constant_Int (V);
+     with Pre => Is_A_Constant_Int (V) and then Fits_In_ULL (V);
 
    function Get_Const_Int_Value_Nat (V : GL_Value) return Nat is
      (Nat (Const_Int_Get_S_Ext_Value (+V)))
-     with Pre => Is_A_Constant_Int (V);
+     with Pre => Is_A_Constant_Int (V) and then Fits_In_LLI (V);
 
    function "+" (V : GL_Value) return LLI is
      (Get_Const_Int_Value (V));
@@ -1116,9 +1133,13 @@ package GNATLLVM.GLValue is
    function "+" (V : GL_Value) return ULL is
      (Get_Const_Int_Value_ULL (V));
 
-   function UI_From_GL_Value (V : GL_Value) return Uint is
-     (UI_From_LLI (+V))
-     with Pre => Is_A_Constant_Int (V);
+   function UI_From_GL_Value (V : GL_Value) return Uint
+     with Pre  => Is_A_Constant_Int (V),
+          Post => UI_To_LLVM (+Type_Of (V), UI_From_GL_Value'Result) = +V;
+   --  V is a constant integer of any width; get its value as a Uint,
+   --  interpreting the bits as unsigned iff V's type is unsigned. The
+   --  postcondition verifies that the result converts back to exactly
+   --  the constant we started with.
    function "+" (V : GL_Value) return Uint renames UI_From_GL_Value;
 
    function Get_Value_Name (V : GL_Value) return String is

@@ -484,6 +484,10 @@ package GNATLLVM.Wrapper is
 
    function Has_SEH (Triple : String) return Boolean;
 
+   function Has_Call_Graph_Section (Triple : String) return Boolean;
+   --  True when the target's object format is ELF, the only one LLVM can emit
+   --  a .llvm.callgraph section into
+
    function Needs_Frame_Pointers (Triple : String) return Boolean;
 
    function Is_x86 (Triple : String) return Boolean;

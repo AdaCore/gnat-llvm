@@ -645,6 +645,18 @@ package body GNATLLVM.Wrapper is
       return Has_SEH_C (Triple & ASCII.NUL) /= 0;
    end Has_SEH;
 
+   ----------------------------
+   -- Has_Call_Graph_Section --
+   ----------------------------
+
+   function Has_Call_Graph_Section (Triple : String) return Boolean is
+      function Has_Call_Graph_Section_C (Triple : String) return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "Has_Call_Graph_Section";
+   begin
+      return Has_Call_Graph_Section_C (Triple & ASCII.NUL) /= 0;
+   end Has_Call_Graph_Section;
+
    --------------------------
    -- Needs_Frame_Pointers --
    --------------------------

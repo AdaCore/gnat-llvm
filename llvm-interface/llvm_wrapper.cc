@@ -1028,6 +1028,13 @@ extern "C" bool Has_SEH(const char *Target) {
           TargetTriple.getArch() == Triple::aarch64);
 }
 
+extern "C" bool Has_Call_Graph_Section(const char *Target) {
+  // LLVM can only emit a .llvm.callgraph section into an ELF object:
+  // MCObjectFileInfo leaves CallGraphSection null for every other object
+  // format and AsmPrinter::emitCallGraphSection dereferences it.
+  return Triple(Target).isOSBinFormatELF();
+}
+
 extern "C" bool Needs_Frame_Pointers(const char *Target) {
   Triple TargetTriple(Target);
 

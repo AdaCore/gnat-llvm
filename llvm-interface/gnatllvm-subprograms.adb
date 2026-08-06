@@ -2843,8 +2843,9 @@ package body GNATLLVM.Subprograms is
 
          if not DSO_Preemptable
            and then Get_Linkage (LLVM_Func) /= External_Weak_Linkage
-           and then (Get_Linkage (LLVM_Func) /= External_Linkage
-                       or else Reloc_Mode in Reloc_Static | Reloc_Default)
+           and then (Is_Windows_Target
+                     or else Get_Linkage (LLVM_Func) /= External_Linkage
+                     or else Reloc_Mode in Reloc_Static | Reloc_Default)
          then
             Set_DSO_Local (LLVM_Func);
          end if;

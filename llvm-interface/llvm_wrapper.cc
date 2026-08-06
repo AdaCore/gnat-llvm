@@ -1048,6 +1048,11 @@ extern "C" bool Is_x86(const char *Target) {
   return TargetTriple.getArch() == Triple::x86;
 }
 
+extern "C" bool Is_Windows(const char *Target) {
+  Triple TargetTriple(Target);
+  return TargetTriple.isOSWindows();
+}
+
 extern "C" const char *Get_Personality_Function_Name(const char *Target) {
   // For now, we don't support SJLJ exceptions, so we just need to decide
   // whether the target uses SEH.

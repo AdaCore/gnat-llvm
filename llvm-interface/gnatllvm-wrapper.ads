@@ -492,6 +492,9 @@ package GNATLLVM.Wrapper is
 
    function Is_x86 (Triple : String) return Boolean;
 
+   function Is_Windows (Triple : String) return Boolean;
+   --  True if the target is a Windows (PE/COFF) target
+
    function Get_Personality_Function_Name (Triple : String) return String;
 
    function Get_Features

@@ -143,6 +143,16 @@ package body GNATLLVM.Codegen is
       elsif S = "-fstack-check" then
          Do_Stack_Check := True;
       elsif S = "-fexperimental-call-graph-section" then
+
+         --  Both section switches emit extra sections and metadata, and never
+         --  change the code we generate.
+         --  A library built with them is therefore byte-identical to one
+         --  built without, which is what lets the call-graph data delivered
+         --  for a runtime describe the shipped runtime exactly.
+         --  However, an analysis build that wants GNAT Stack's frame sums
+         --  to be tight (and comparable with GCC-based GNAT) need to pass
+         --  -fno-optimize-sibling-calls as well.
+
          Call_Graph_Section := True;
       elsif S = "-fstack-size-section" then
          Stack_Size_Section := True;
@@ -731,6 +741,19 @@ package body GNATLLVM.Codegen is
       Enable_Init_Array (Target_Machine);
 
       if Call_Graph_Section then
+
+         --  LLVM has a call-graph section for ELF only: on any other object
+         --  format the assembly printer dereferences a section that
+         --  MCObjectFileInfo never created. Refuse the switch rather than
+         --  crash, and refuse it here, where gnat1 exits before writing
+         --  anything.
+
+         if not Has_Call_Graph_Section (Normalized_Target_Triple.all) then
+            Early_Error
+              ("-fexperimental-call-graph-section is supported for ELF "
+               & "targets only, not " & Target_Triple.all);
+         end if;
+
          Enable_Call_Graph_Section (Target_Machine);
       end if;
 

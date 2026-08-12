@@ -149,6 +149,16 @@ package body GNATLLVM.Subprograms is
    --  location of the reference, make a trampoline that combines the
    --  static link and function.
 
+   procedure Add_Common_Function_Attributes (Func : GL_Value)
+     with Pre => Present (Func);
+   --  Add to Func the function attributes that do not depend on a GNAT
+   --  entity: the target CPU and features, and the attributes controlled by
+   --  the switches selecting unwind tables, frame pointers, sibling-call
+   --  optimization, builtins, the sanitizers and implicit floating point.
+   --  Every function for which we emit a body must get these. Anything that
+   --  reads the entity, such as the inlining attributes, stays in
+   --  Create_Subprogram.
+
    --  Elaboration entries can be either nodes to be emitted as statements
    --  or expressions to be saved.
 
@@ -1475,6 +1485,49 @@ package body GNATLLVM.Subprograms is
       end if;
    end Reorder_Elab_Table;
 
+   ------------------------------------
+   -- Add_Common_Function_Attributes --
+   ------------------------------------
+
+   procedure Add_Common_Function_Attributes (Func : GL_Value) is
+   begin
+      if CPU.all /= "generic" then
+         Add_Named_Attribute (Func, "target-cpu", CPU.all);
+      end if;
+
+      if Features.all /= "" then
+         Add_Named_Attribute (Func, "target-features", Features.all);
+      end if;
+
+      if Need_Unwind_Tables then
+         Add_Uwtable_Attribute (Func);
+      end if;
+
+      if Force_Frame_Pointers then
+         Add_Named_Attribute (Func, "frame-pointer", "all");
+      end if;
+
+      if No_Tail_Calls then
+         Add_Named_Attribute (Func, "disable-tail-calls", "true");
+      end if;
+
+      if No_Builtins then
+         Add_Named_Attribute (Func, "no-builtins", "");
+      end if;
+
+      if Enable_Fuzzer then
+         Add_Opt_For_Fuzzing_Attribute (Func);
+      end if;
+
+      if Enable_Address_Sanitizer then
+         Add_Sanitize_Address_Attribute (Func);
+      end if;
+
+      if No_Implicit_Float then
+         Add_No_Implicit_Float_Attribute (Func);
+      end if;
+   end Add_Common_Function_Attributes;
+
    --------------------
    -- Emit_Elab_Proc --
    --------------------
@@ -1530,6 +1583,32 @@ package body GNATLLVM.Subprograms is
          LLVM_Func := Add_Function (Name, Fn_Ty ((1 .. 0 => <>), Void_Ty),
                                     Void_GL_Type,
                                     Is_Builtin => True);
+
+         --  We emit a body for this function, so it needs the same
+         --  attributes as any other subprogram. Add_Function does not add
+         --  them and we do not go through Create_Subprogram here. The
+         --  Ada_Main_Elabb branch above does, so it already has them.
+         --
+         --  The inlining attributes are deliberately not among these. They
+         --  are read off a GNAT entity, which an elaboration procedure does
+         --  not have, and there is nothing to control: an elaboration
+         --  procedure carries no pragma and is called exactly once, from
+         --  the elaboration of the unit that owns it.
+
+         Add_Common_Function_Attributes (LLVM_Func);
+
+         --  We also have to mark it DSO-local, which for a function we
+         --  define ourselves is Emit_One_Body's job. Note that this is not
+         --  the weaker condition Create_Subprogram uses: that one has to
+         --  cope with a subprogram that we may only be declaring, such as
+         --  an imported one, which must keep its GOT relocation when
+         --  generating position-independent code. An elaboration procedure
+         --  always has a body, right here, so it gets the same
+         --  unconditional treatment as any other body.
+
+         if not DSO_Preemptable then
+            Set_DSO_Local (LLVM_Func);
+         end if;
       end if;
 
       --  Do the mechanics of setting up the elab procedure
@@ -2858,31 +2937,8 @@ package body GNATLLVM.Subprograms is
          --  Now deal with function and parameter attributes.
          --  ??? We don't handle some return value attributes yet.
 
-         if CPU.all /= "generic" then
-            Add_Named_Attribute (LLVM_Func, "target-cpu", CPU.all);
-         end if;
-
-         if Features.all /= "" then
-            Add_Named_Attribute (LLVM_Func, "target-features", Features.all);
-         end if;
-
-         Add_Inline_Attribute (LLVM_Func, E);
-
-         if Need_Unwind_Tables then
-            Add_Uwtable_Attribute (LLVM_Func);
-         end if;
-
-         if Force_Frame_Pointers then
-            Add_Named_Attribute (LLVM_Func, "frame-pointer", "all");
-         end if;
-
-         if No_Tail_Calls then
-            Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
-         end if;
-
-         if No_Builtins then
-            Add_Named_Attribute (LLVM_Func, "no-builtins", "");
-         end if;
+         Add_Common_Function_Attributes (LLVM_Func);
+         Add_Inline_Attribute           (LLVM_Func, E);
 
          if No_Return (E) then
             Set_Does_Not_Return (LLVM_Func);
@@ -2908,18 +2964,6 @@ package body GNATLLVM.Subprograms is
             elsif RK = RK_By_Reference then
                   Add_Dereferenceable_Attribute (LLVM_Func, Return_GT);
             end if;
-         end if;
-
-         if Enable_Fuzzer then
-            Add_Opt_For_Fuzzing_Attribute (LLVM_Func);
-         end if;
-
-         if Enable_Address_Sanitizer then
-            Add_Sanitize_Address_Attribute (LLVM_Func);
-         end if;
-
-         if No_Implicit_Float then
-            Add_No_Implicit_Float_Attribute (LLVM_Func);
          end if;
 
          Formal := First_Formal_With_Extras (E);

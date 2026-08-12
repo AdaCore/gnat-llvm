@@ -131,6 +131,10 @@ package GNATLLVM.Codegen is
    --  Sanitizer options (including the fuzzer, which implies coverage
    --  sanitizer)
 
+   Protect_Branches : Boolean := False;
+   Protect_Returns  : Boolean := False;
+   --  Control-flow protection
+
    Force_Activation_Record_Parameter : Boolean := False;
    --  Indicates that we need to force all subprograms to have an activation
    --  record parameter. We need to do this for targets, such as WebAssembly,

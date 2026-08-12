@@ -1253,6 +1253,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Add the NoImplicitFloat attribute to function V
 
+   procedure Add_Hardware_Shadow_Stack_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+   --  Add the "hw-shadow-stack" attribute to function V
+
    procedure Set_DSO_Local (V : GL_Value)
      with Pre => Is_A_Function (V) or else Is_A_Global_Variable (V), Inline;
    --  Add the DSOlocal attribute to a global (variable or function)

@@ -155,6 +155,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_Uwtable_Attribute";
 
+   procedure Add_Hardware_Shadow_Stack_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Hardware_Shadow_Stack_Attribute";
+
    function Has_Inline_Attribute (Func : Value_T) return Boolean
      with Pre => Present (Is_A_Function (Func));
 
@@ -479,6 +483,12 @@ package GNATLLVM.Wrapper is
 
    procedure Enable_Frame_Pointers (Module : Module_T)
      with Import, Convention => C, External_Name => "Enable_Frame_Pointers";
+
+   procedure Enable_Branch_Protection (Module : Module_T)
+     with Import, Convention => C, External_Name => "Enable_Branch_Protection";
+
+   procedure Enable_Return_Protection (Module : Module_T)
+     with Import, Convention => C, External_Name => "Enable_Return_Protection";
 
    function Has_Default_PIE (Triple : String) return Boolean;
 

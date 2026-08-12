@@ -78,6 +78,9 @@ package GNATLLVM.Codegen is
    SEH             : Boolean        := False;
    --  True if the target supports Structured Exception Handling
 
+   Is_Windows_Target : Boolean      := False;
+   --  True if the target is a Windows (PE/COFF) target.
+
    Need_Unwind_Tables : Boolean := False;
    --  True if the target requires the `uwtable` attribute to be set on
    --  emitted functions (and a default unwind-table kind on the module)

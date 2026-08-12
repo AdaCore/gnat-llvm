@@ -645,6 +645,7 @@ package body GNATLLVM.Codegen is
       end if;
 
       SEH := Has_SEH (Normalized_Target_Triple.all);
+      Is_Windows_Target := Is_Windows (Normalized_Target_Triple.all);
       Need_Unwind_Tables := not Suppress_Checks;
       Force_Frame_Pointers :=
         Needs_Frame_Pointers (Normalized_Target_Triple.all);

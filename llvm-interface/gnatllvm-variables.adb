@@ -1901,7 +1901,15 @@ package body GNATLLVM.Variables is
                               Get_Type_Alignment (Type_Of (LLVM_Var)));
             end if;
 
-            if not DSO_Preemptable then
+            --  On Windows (which means MinGW for us), don't set the dso_local
+            --  attribute for variables which we don't define. They could come
+            --  from a different DLL via MinGW's auto-import feature (which
+            --  replaces explicit dllimport declarations); the relocations
+            --  emitted for dso_local variables are too narrow in this case.
+
+            if not DSO_Preemptable
+              and then (not Is_Windows_Target or else Definition)
+            then
                Set_DSO_Local (LLVM_Var);
             end if;
          end if;
@@ -2194,7 +2202,7 @@ package body GNATLLVM.Variables is
             --  have a non-static address expression, add it to the elab
             --  proc if at library level.
 
-            LLVM_Var := Make_Global_Variable (E, GT, True);
+            LLVM_Var := Make_Global_Variable (E, GT, not Is_External);
 
             if Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);

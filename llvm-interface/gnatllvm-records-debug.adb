@@ -857,17 +857,19 @@ package body GNATLLVM.Records.Debug is
          begin
             if Is_Union then
                declare
+                  Size_In_Bits : constant ULL :=
+                    UI_To_ULL (Esize (Original_Type));
                   Dummy_Type : constant Metadata_T :=
                     DI_Create_Struct_Type
                       (No_Metadata_T, "",
-                       0, 0, DI_Flag_Artificial,
+                       Size_In_Bits, 0, DI_Flag_Artificial,
                        No_Metadata_T, Fields, 0, No_Metadata_T, "");
                begin
                   Get_Variant_Encoding (Var_Node);
                   Member_Table.Append
                     (DI_Create_Member_Type (No_Metadata_T,
                                             Name_Buffer (1 .. Name_Len),
-                                            0, 0, 0, Dummy_Type,
+                                            Size_In_Bits, 0, 0, Dummy_Type,
                                             DI_Flag_Zero));
                end;
             else

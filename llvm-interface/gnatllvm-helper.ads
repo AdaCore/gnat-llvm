@@ -270,6 +270,28 @@ package GNATLLVM.Helper is
      with Pre =>  (for all MD of Elements => Present (MD)),
           Post => Present (DI_Create_Struct_Type'Result);
 
+   function DI_Create_Struct_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      Size_In_Bits   : ULL;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      Derived_From   : Metadata_T;
+      Elements       : Metadata_Array;
+      Run_Time_Lang  : Nat;
+      V_Table_Holder : Metadata_T;
+      Unique_Id      : String) return Metadata_T
+     is
+     (DI_Create_Struct_Type (DI_Builder, Scope, Name, Name'Length,
+                             No_Metadata_T, 0, uint64_t (Size_In_Bits),
+                             uint32_t (Align_In_Bits), Flags, Derived_From,
+                             Elements'Address, unsigned (Elements'Length),
+                             unsigned (Run_Time_Lang), V_Table_Holder,
+                             Unique_Id, Unique_Id'Length))
+     with Pre =>  (for all MD of Elements => Present (MD)),
+          Post => Present (DI_Create_Struct_Type'Result);
+   --  An overload that does not add a location to the type.
+
    function DI_Create_Union_Type
      (Scope          : Metadata_T;
       Name           : String;
@@ -326,6 +348,23 @@ package GNATLLVM.Helper is
          uint64_t (Offset_In_Bits), Flags, Ty))
      with Pre  => Present (File) and then Present (Ty),
           Post => Present (DI_Create_Member_Type'Result);
+
+   function DI_Create_Member_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      Size_In_Bits   : ULL;
+      Align_In_Bits  : Nat;
+      Offset_In_Bits : ULL;
+      Ty             : Metadata_T;
+      Flags          : DI_Flags_T := DI_Flag_Zero) return Metadata_T
+   is
+     (DI_Create_Member_Type
+        (DI_Builder, Scope, Name, Name'Length, No_Metadata_T, 0,
+         uint64_t (Size_In_Bits), uint32_t (Align_In_Bits),
+         uint64_t (Offset_In_Bits), Flags, Ty))
+     with Pre  => Present (Ty),
+          Post => Present (DI_Create_Member_Type'Result);
+   --  An overload that does not add a location to the member.
 
    function DI_Create_Bit_Field_Member_Type
      (Scope                  : Metadata_T;

@@ -871,6 +871,60 @@ package body GNATLLVM.Wrapper is
                                  Block);
    end Create_And_Insert_Label;
 
+   --------------------------------
+   -- Set_Indirect_Call_Location --
+   --------------------------------
+
+   procedure Set_Indirect_Call_Location
+     (Call : Value_T;
+      File : String;
+      Line : Logical_Line_Number;
+      Col  : Column_Number)
+   is
+      procedure Set_Indirect_Call_Location_C
+        (Call : Value_T;
+         File : String;
+         Line : Logical_Line_Number;
+         Col  : Column_Number)
+        with Import, Convention => C,
+             External_Name => "Set_Indirect_Call_Location";
+   begin
+      Set_Indirect_Call_Location_C (Call, File & ASCII.NUL, Line, Col);
+   end Set_Indirect_Call_Location;
+
+   -----------------------------
+   -- Get_Indirect_Call_Edges --
+   -----------------------------
+
+   function Get_Indirect_Call_Edges (Module : Module_T) return String is
+      function Get_Indirect_Call_Edges_C (Module : Module_T) return chars_ptr
+        with Import, Convention => C,
+             External_Name => "Get_Indirect_Call_Edges";
+
+      Result_C : chars_ptr        := Get_Indirect_Call_Edges_C (Module);
+      Result   : constant String  :=
+        (if Result_C = Null_Ptr then "" else Value (Result_C));
+
+   begin
+      Free (Result_C);
+      return Result;
+   end Get_Indirect_Call_Edges;
+
+   -------------------------
+   -- Append_Section_Data --
+   -------------------------
+
+   procedure Append_Section_Data
+     (Module : Module_T; Section : String; Text : String)
+   is
+      procedure Append_Section_Data_C
+        (Module : Module_T; Section : String; Text : String)
+        with Import, Convention => C, External_Name => "Append_Section_Data";
+   begin
+      Append_Section_Data_C
+        (Module, Section & ASCII.NUL, Text & ASCII.NUL);
+   end Append_Section_Data;
+
    --------------------------
    -- Create_Subrange_Type --
    --------------------------

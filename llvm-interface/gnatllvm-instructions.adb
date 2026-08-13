@@ -19,6 +19,7 @@ with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Restrict;    use Restrict;
 with Rident;      use Rident;
+with Sinput;      use Sinput;
 with Targparm;    use Targparm;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
@@ -48,8 +49,9 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_T   : Type_T;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return Value_T;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return Value_T;
    --  Internal version of Call and Call_Ref
 
    function GEP_To_Relationship_Internal
@@ -1748,8 +1750,9 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_T   : Type_T;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return Value_T
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return Value_T
    is
       function To_Param_Num (Idx : Nat) return unsigned;
       --  Map index in Args array to LLVM parameter number
@@ -1829,6 +1832,27 @@ package body GNATLLVM.Instructions is
          Set_Instruction_Call_Conv (Call_Inst, LLVM_Conv);
       end if;
 
+      --  For the call-graph section, tag the call with CG_Loc, the source
+      --  location of the call as Emit_Call saw it. Only a call that is
+      --  indirect in the emitted IR is tagged.
+      --  A post-optimization walk turns the tag into an "__indirect_call" edge
+      --  attributed to the function that ends up containing the call.
+      --  We use the logical line number, which is what Exp_CG uses for the
+      --  dispatching descriptors.
+
+      if Call_Graph_Section and then CG_Loc > No_Location then
+         declare
+            SI : constant Source_File_Index := Get_Source_File_Index (CG_Loc);
+
+         begin
+            Set_Indirect_Call_Location
+              (Call_Inst,
+               Get_Name_String (Debug_Source_Name (SI)),
+               Get_Logical_Line_Number (CG_Loc),
+               Get_Column_Number (CG_Loc));
+         end;
+      end if;
+
       return Call_Inst;
    end Call_Internal;
 
@@ -1840,11 +1864,13 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E,
+                                                 CG_Loc),
                                   Return_GL_Type (Func),
                                   Return_Type (Fn_MD))),
          For_Aliased));
@@ -1854,15 +1880,17 @@ package body GNATLLVM.Instructions is
    ----------
 
    function Call
-     (Func  : GL_Value;
-      Fn_MD : MD_Type;
-      Args  : GL_Value_Array;
-      GT    : GL_Type;
-      Name  : String    := "";
-      E     : Entity_Id := Empty) return GL_Value
+     (Func   : GL_Value;
+      Fn_MD  : MD_Type;
+      Args   : GL_Value_Array;
+      GT     : GL_Type;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E,
+                                                 CG_Loc),
                                   GT, Fn_Return_Type (Func))),
          For_Aliased));
 
@@ -1871,15 +1899,16 @@ package body GNATLLVM.Instructions is
    ----------
 
    function Call
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      Name : String    := "";
-      E    : Entity_Id := Empty) return GL_Value
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal
                                     (Func, Get_Function_Type (Func), Args,
-                                     Name, E),
+                                     Name, E, CG_Loc),
                                   Return_GL_Type (Func),
                                   Fn_Return_Type (Func))),
          For_Aliased));
@@ -1892,12 +1921,13 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
         (Initialize_Alignment (G_Ref (Call_Internal (Func, +Fn_MD, Args,
-                                                     Name, E),
+                                                     Name, E, CG_Loc),
                                       Return_GL_Type (Func),
                                       Return_Type (Fn_MD))),
          For_Aliased));
@@ -1911,11 +1941,13 @@ package body GNATLLVM.Instructions is
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       R      : GL_Relationship;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name, E,
+                                                 CG_Loc),
                                   Return_GL_Type (Func), Return_Type (Fn_MD),
                                   R)),
          For_Aliased));
@@ -1925,16 +1957,17 @@ package body GNATLLVM.Instructions is
    -----------------------
 
    function Call_Relationship
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      R    : GL_Relationship;
-      Name : String    := "";
-      E    : Entity_Id := Empty) return GL_Value
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      R      : GL_Relationship;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
    is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal
                                     (Func, Get_Function_Type (Func),
-                                     Args, Name, E),
+                                     Args, Name, E, CG_Loc),
                                   Return_GL_Type (Func),
                                   Fn_Return_Type (Func), R)),
          For_Aliased));
@@ -1944,12 +1977,14 @@ package body GNATLLVM.Instructions is
    ----------
 
    procedure Call
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      Name : String    := "";
-      E    : Entity_Id := Empty) is
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) is
    begin
-      Discard (Call_Internal (Func, Get_Function_Type (Func), Args, Name, E));
+      Discard (Call_Internal (Func, Get_Function_Type (Func), Args, Name, E,
+                              CG_Loc));
    end Call;
 
    ----------
@@ -1960,11 +1995,12 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty)
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location)
    is
    begin
-      Discard (Call_Internal (Func, +Fn_MD, Args, Name, E));
+      Discard (Call_Internal (Func, +Fn_MD, Args, Name, E, CG_Loc));
    end Call;
 
    ------------------

@@ -1657,7 +1657,15 @@ package body GNATLLVM.Exprs is
               (GT, Get_Mechanism_Code (Entity (Pref), Expressions (N)));
 
          when Attribute_Null_Parameter =>
-            return Load (Const_Null_Ref (P_GT));
+
+            --  This attribute denotes an imaginary object allocated at
+            --  address zero, and the identity of that object must be
+            --  represented by the address zero in the argument list. So
+            --  return a null reference and let the caller pass it along.
+            --  Loading from it here would both be undefined behavior and
+            --  lose the address zero.
+
+            return Const_Null_Ref (P_GT);
 
          when others =>
             pragma Assert (Decls_Only);

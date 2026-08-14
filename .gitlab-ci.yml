@@ -4,6 +4,7 @@ stages:
   - test # not actually used, needed for test template
   - test-gnat-llvm
   - test-ccg
+  - test-gnatstack
 
 .optional_testing_template:: &opt-test
   - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -80,6 +81,30 @@ include:
       stage: test-gnat-llvm
       anod-args: run test_acats_x86
       generic-anod-ci-args: --add-dep eng/toolchain/acats
+      needs:
+        - build-x86:linux
+      rules: *opt-test
+
+  # Testing of GNATstack. Linux only: the call graph is read from the ELF
+  # sections that -fexperimental-call-graph-section emits, and that switch is
+  # refused on the non-ELF Windows target.
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
+    inputs:
+      job-name: gnatstack
+      stage: test-gnatstack
+      anod-args: run test_gnatstack
+      # This stage comes after the ccg one, and a manual job only becomes
+      # playable once the earlier stages are done. Depending on the build job
+      # explicitly makes this a DAG job, so it can be started as soon as the
+      # compiler it tests is available.
+      needs:
+        - build:linux
+      rules: *opt-test
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
+    inputs:
+      job-name: gnatstack-x86
+      stage: test-gnatstack
+      anod-args: run test_gnatstack_x86
       needs:
         - build-x86:linux
       rules: *opt-test

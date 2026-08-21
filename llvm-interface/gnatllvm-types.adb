@@ -1115,7 +1115,8 @@ package body GNATLLVM.Types is
             (1 => To_Primitive (Emit_Entity (SM_Object (Src))),
              2 => Prepare_SM_Copy_Host (Dest),
              3 => Prepare_SM_Copy_Target (Src),
-             4 => Get (Size, Data)));
+             4 => Get (Size, Data)),
+            E => SM_Copy_From (Src));
    end Call_SM_Copy_From;
 
    ---------------------
@@ -1128,7 +1129,8 @@ package body GNATLLVM.Types is
             (1 => To_Primitive (Emit_Entity (SM_Object (Dest))),
              2 => Prepare_SM_Copy_Target (Dest),
              3 => Prepare_SM_Copy_Host (Src),
-             4 => Get (Size, Data)));
+             4 => Get (Size, Data)),
+           E => SM_Copy_To (Dest));
    end Call_SM_Copy_To;
 
    ------------------

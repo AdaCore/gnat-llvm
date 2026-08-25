@@ -98,30 +98,30 @@ setup:
 	./configure_default_target.sh "$(llvm_target)"
 
 build: setup force
-	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
+	+$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS)
+	+$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-uninit: setup force
-	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
+	+$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS)
+	+$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-opt: setup force
-	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
+	+$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
+	+$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
 
 # Target for building with coverage instrumentation.
 build-cov: setup force
 	$(RMDIR) obj/cov bin/cov
 	gnatcov instrument -Pgnat_llvm --subdirs=cov --level=stmt --dump-trigger=atexit
 	gnatcov instrument -Ptools --subdirs=cov --level=stmt --dump-trigger=atexit
-	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) -O \
+	+$(GPRBUILD) -Pgnat_llvm -j$(PROCS) -O \
 	  --subdirs=cov --src-subdirs=gnatcov-instr \
 	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS) -O \
+	+$(GPRBUILD) -Ptools -j$(PROCS) -O \
 	  --subdirs=cov --src-subdirs=gnatcov-instr \
 	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr \
 	  -largs $(LDFLAGS)
@@ -305,7 +305,7 @@ gnatlib-shared:
 	  LIBRARY_KIND=dynamic gnatlib
 
 gnatlib-bc:
-	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	+PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -c --subdirs=bc -j$(PROCS) \
 	  -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -I../../adainclude -I../../include -emit-llvm"
@@ -316,7 +316,7 @@ gnatlib-bc:
 	@cd $(RTSOBJ)/bc && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
 
 quicklib: $(RTSDIR) $(LIBEXEC_DIR)
-	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	+PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -I$(LLVM_INCLUDE_DIR)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
@@ -364,7 +364,7 @@ zfp-build:
 	  cp -p $(GNAT_SRC)/libgnat/$$f $(ZFPINCLUDE); \
 	done
 	cp -p zfp/*.* $(ZFPINCLUDE)
-	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	+PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -p --target=$(target) --RTS=zfp -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
 	  -XCFLAGS="$(CFLAGS)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \

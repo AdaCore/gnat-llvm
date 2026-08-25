@@ -268,7 +268,7 @@ else ifeq ($(strip $(filter-out linux,$(target_os))),)
 # don't need to build a separate libgnat_pic.a. The GPR tools automatically
 # pick libgnat.a if libgnat_pic.a doesn't exist, but let's be on the safe side
 # and create a copy, just like GCC does.
-else ifeq ($(strip $(filter-out x86_64-w64-mingw32,$(target))),)
+else ifeq ($(strip $(filter-out mingw32,$(target_os))),)
 	$(MAKE) quicklib LIBRARY_KIND=dynamic GPRBUILD="$(GPRBUILD) --gpr=2" LN_S="cp -p"
 	$(MV) $(RTSLIB)/libgna*$(SOEXT) .
 	$(MAKE) gnatlib-automated
@@ -345,7 +345,10 @@ ifneq ($(target_clang),)
 	$(MKDIR) "$(LIBEXEC_DIR)/bin"
 	$(LN_S) "$(target_clang)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXEEXT)
 	$(LN_S) "`dirname $(target_clang)`/ld.lld$(EXEEXT)" $(LIBEXEC_DIR)/bin/ld.lld$(EXEEXT)
-	$(CP_DIR) "`dirname $(target_clang)`/../lib" $(LIBEXEC_DIR)/lib
+	$(CP_DIR) "`dirname $(target_clang)`/../lib" $(LIBEXEC_DIR)
+	if [ -d "`dirname $(target_clang)`/../$(llvm_target)" ] ; then \
+	  $(CP_DIR) "`dirname $(target_clang)`/../$(llvm_target)" $(LIBEXEC_DIR); \
+	fi
 endif
 
 # ZFP runtime

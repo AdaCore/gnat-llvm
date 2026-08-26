@@ -442,6 +442,29 @@ package body GNATLLVM.Codegen is
          end;
       elsif Starts_With (S, "-fpass-plugin=") then
          Plugins.Append (new String'(Switch_Value (S, "-fpass-plugin=")));
+      elsif S = "-fcf-protection" then
+         Protect_Branches := True;
+         Protect_Returns  := True;
+      elsif Starts_With (S, "-fcf-protection=") then
+         declare
+            Mode : constant String := Switch_Value (S, "-fcf-protection=");
+         begin
+            if Mode = "full" then
+               Protect_Branches := True;
+               Protect_Returns  := True;
+            elsif Mode = "branch" then
+               Protect_Branches := True;
+               Protect_Returns  := False;
+            elsif Mode = "return" then
+               Protect_Branches := False;
+               Protect_Returns  := True;
+            elsif Mode = "none" then
+               Protect_Branches := False;
+               Protect_Returns  := False;
+            else
+               Early_Error ("invalid control-flow protection mode " & Mode);
+            end if;
+         end;
       elsif Starts_With (S, "-llvm-") then
          Switches.Append (new String'(Switch_Value (S, "-llvm")));
       elsif C_Process_Switch (S) then
@@ -797,6 +820,14 @@ package body GNATLLVM.Codegen is
 
       if Force_Frame_Pointers then
          Enable_Frame_Pointers (Module);
+      end if;
+
+      if Protect_Branches then
+         Enable_Branch_Protection (Module);
+      end if;
+
+      if Protect_Returns then
+         Enable_Return_Protection (Module);
       end if;
 
       --  ??? Replace this by a parameter in system.ads or target.atp

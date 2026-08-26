@@ -1996,6 +1996,15 @@ package body GNATLLVM.GLValue is
       Add_No_Implicit_Float_Attribute (+V);
    end Add_No_Implicit_Float_Attribute;
 
+   -----------------------------------------
+   -- Add_Hardware_Shadow_Stack_Attribute --
+   -----------------------------------------
+
+   procedure Add_Hardware_Shadow_Stack_Attribute (V : GL_Value) is
+   begin
+      Add_Hardware_Shadow_Stack_Attribute (+V);
+   end Add_Hardware_Shadow_Stack_Attribute;
+
    -------------------
    -- Set_DSO_Local --
    -------------------

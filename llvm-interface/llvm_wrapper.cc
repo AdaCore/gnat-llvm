@@ -200,6 +200,13 @@ extern "C" void Add_No_Implicit_Float_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::NoImplicitFloat);
 }
 
+extern "C" void Add_Hardware_Shadow_Stack_Attribute(Function *fn) {
+  // Clang adds the attribute only when targeting RISC-V, but there should be
+  // no harm in adding it unconditionally because it's never read outside of
+  // RISC-V frame lowering.
+  fn->addFnAttr("hw-shadow-stack");
+}
+
 extern "C" bool Has_Inline_Attribute(Function *fn) {
   return fn->hasFnAttribute(Attribute::InlineHint);
 }
@@ -1008,6 +1015,14 @@ extern "C" void Set_Unwind_Tables(Module *M) {
 
 extern "C" void Enable_Frame_Pointers(Module *M) {
   M->setFramePointer(FramePointerKind::All);
+}
+
+extern "C" void Enable_Branch_Protection(Module *M) {
+  M->addModuleFlag(Module::Warning, "cf-protection-branch", 1);
+}
+
+extern "C" void Enable_Return_Protection(Module *M) {
+  M->addModuleFlag(Module::Warning, "cf-protection-return", 1);
 }
 
 extern "C" bool Has_Default_PIE(const char *Target) {

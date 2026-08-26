@@ -1526,6 +1526,10 @@ package body GNATLLVM.Subprograms is
       if No_Implicit_Float then
          Add_No_Implicit_Float_Attribute (Func);
       end if;
+
+      if Protect_Returns then
+         Add_Hardware_Shadow_Stack_Attribute (Func);
+      end if;
    end Add_Common_Function_Attributes;
 
    --------------------

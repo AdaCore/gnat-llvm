@@ -263,6 +263,10 @@ package GNATLLVM is
    type String_Access is access String;
    procedure Free is new Ada.Unchecked_Deallocation (String, String_Access);
 
+   type Opaque_Target_Info is null record;
+   type Target_Info_T is access all Opaque_Target_Info;
+   --  C++ representation of Clang's target information
+
    IR_Builder         : Builder_T;
    --  The current LLVM Instruction builder
 
@@ -277,6 +281,9 @@ package GNATLLVM is
 
    Target_Machine     : Target_Machine_T;
    --  The LLVM target machine for our module
+
+   Target_Info        : Target_Info_T;
+   --  Clang's information about the target
 
    MD_Builder         : MD_Builder_T;
    --  The current LLVM Metadata builder

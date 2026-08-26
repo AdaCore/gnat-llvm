@@ -272,14 +272,16 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Initialize_LLVM";
    --  Initializes various parts of the LLVM infrastructure.
 
+   function Get_Target_Info
+     (Triple : String; CPU : String; ABI : String; Features : String)
+      return Target_Info_T;
+   --  Retrieve Clang's target information for use in other subprograms.
+
    procedure Get_Target_C_Types
-     (Triple   : String;
-      CPU      : String;
-      ABI      : String;
-      Features : String;
-      Info     : out Target_C_Type_Info;
-      Emit_C   : Boolean;
-      Success  : out Boolean);
+     (Target_Info : Target_Info_T;
+      Info        : out Target_C_Type_Info;
+      Emit_C      : Boolean;
+      Success     : out Boolean);
    --  Retrieve information about the C types for the target.
 
    procedure Set_NUW (V : Value_T)
@@ -484,11 +486,11 @@ package GNATLLVM.Wrapper is
    procedure Enable_Frame_Pointers (Module : Module_T)
      with Import, Convention => C, External_Name => "Enable_Frame_Pointers";
 
-   procedure Enable_Branch_Protection (Module : Module_T)
-     with Import, Convention => C, External_Name => "Enable_Branch_Protection";
+   function Enable_Branch_Protection
+     (Module : Module_T; Target_Info : Target_Info_T) return Boolean;
 
-   procedure Enable_Return_Protection (Module : Module_T)
-     with Import, Convention => C, External_Name => "Enable_Return_Protection";
+   function Enable_Return_Protection
+     (Module : Module_T; Target_Info : Target_Info_T) return Boolean;
 
    function Has_Default_PIE (Triple : String) return Boolean;
 

@@ -1,3 +1,5 @@
+#include <memory>
+#include <optional>
 #include <string.h>
 
 #include "llvm-c/Core.h"
@@ -473,6 +475,80 @@ extern "C" void Initialize_LLVM(void) {
   InitializeAllAsmPrinters();
 }
 
+// Container for Clang's target information and any data that it references.
+struct ClangTargetInfo {
+  // The TargetInfo gets only a reference to the options (a pointer before LLVM
+  // 21), so we need to hold on to them.
+  //
+  // ??? When we drop support for LLVM versions before 21, we can turn this
+  // field into a value instead of a pointer because recent versions of
+  // TargetInfo take it by reference, not as std::shared_ptr.
+  std::shared_ptr<clang::TargetOptions> Options;
+
+  // The DiagnosticOptions are passed to the DiagnosticsEngine (below) by
+  // reference, so we need to retain them.
+#if LLVM_VERSION_MAJOR < 21
+  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts;
+#else
+  DiagnosticOptions DiagOpts;
+#endif
+
+  // The DiagnosticsEngine class doesn't have a default initializer and can't
+  // be moved, so we store it inside std::optional.
+  std::optional<DiagnosticsEngine> Diags;
+
+  TargetInfo *Info;
+};
+
+extern "C" ClangTargetInfo *Get_Target_Info(const char *TargetTriple,
+                                            const char *CPU, const char *ABI,
+                                            const char *Features) {
+  auto Result = std::make_unique<ClangTargetInfo>();
+
+  Result->Options = std::make_shared<clang::TargetOptions>();
+  Result->Options->Triple = TargetTriple;
+  Result->Options->CPU = CPU;
+  Result->Options->ABI = ABI;
+
+  std::string FeatureString = Features;
+  if (!FeatureString.empty()) {
+    SmallVector<StringRef, 16> FeatureVector;
+    SplitString(FeatureString, FeatureVector, ",");
+    for (const auto F : FeatureVector)
+      Result->Options->Features.push_back(F.str());
+  }
+
+  // The Clang API requires us to provide a handler for diagnostic messages
+  // emitted during the operation. It owns the handler, and the DiagnosticIDs
+  // are reference-counted, so there's no need to keep either of them alive
+  // explicitly.
+  //
+  // ??? Use a real diagnostics consumer if we ever get an error from Clang.
+  IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+#if LLVM_VERSION_MAJOR < 21
+  Result->DiagOpts = new DiagnosticOptions();
+  Result->Diags.emplace(DiagID, &*Result->DiagOpts, new IgnoringDiagConsumer());
+#else
+  Result->Diags.emplace(DiagID, Result->DiagOpts, new IgnoringDiagConsumer());
+#endif
+
+  // Finally, we can create the TargetInfo structure.
+#if LLVM_VERSION_MAJOR < 21
+  Result->Info =
+      TargetInfo::CreateTargetInfo(*Result->Diags, Result->Options);
+#else
+  Result->Info =
+      TargetInfo::CreateTargetInfo(*Result->Diags, *Result->Options);
+#endif
+
+  if (Result->Info == nullptr)
+    return nullptr;
+
+  // Leak our heap-allocated result structure to the Ada caller, which is going
+  // to own it from this point on.
+  return Result.release();
+}
+
 // Description of C type properties to pass to Ada. Unless otherwise noted,
 // sizes are in bits.
 struct Target_C_Type_Info {
@@ -497,56 +573,13 @@ struct Target_C_Type_Info {
   unsigned StrictAlignment;
 };
 
-extern "C" void Get_Target_C_Types(const char *TargetTriple, const char *CPU,
-                                   const char *ABI, const char *Features,
+extern "C" void Get_Target_C_Types(ClangTargetInfo *CTI,
                                    Target_C_Type_Info *Result, int Emit_C,
                                    unsigned char *success) {
   *Result = {};
   *success = 0;
 
-  auto Options = std::make_shared<clang::TargetOptions>();
-  Options->Triple = TargetTriple;
-
-  std::string CPUString = CPU;
-  if (CPUString != "generic") // GNAT-LLVM's default CPU, unknown to LLVM
-    Options->CPU = CPU;
-
-  std::string FeatureString = Features;
-  if (!FeatureString.empty()) {
-    SmallVector<StringRef, 16> FeatureVector;
-    SplitString(FeatureString, FeatureVector, ",");
-    for (const auto F : FeatureVector)
-      Options->Features.push_back(F.str());
-  }
-
-  // The Clang API requires us to provide a handler for diagnostic messages
-  // emitted during the operation.
-  //
-  // ??? Use a real diagnostics consumer if we ever get an error from Clang.
-  IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
-#if LLVM_VERSION_MAJOR < 21
-  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-  DiagnosticsEngine Diags(DiagID, &*DiagOpts, new IgnoringDiagConsumer());
-#else
-  DiagnosticOptions DiagOpts;
-  DiagnosticsEngine Diags(DiagID, DiagOpts, new IgnoringDiagConsumer());
-#endif
-
-  // Finally, we can create the TargetInfo structure.
-#if LLVM_VERSION_MAJOR < 21
-  std::unique_ptr<TargetInfo> Info(
-      TargetInfo::CreateTargetInfo(Diags, Options));
-#else
-  std::unique_ptr<TargetInfo> Info(
-      TargetInfo::CreateTargetInfo(Diags, *Options));
-#endif
-
-  std::string ABIString = ABI;
-  if (!ABIString.empty())
-    Info->setABI(ABIString);
-
-  if (Info == nullptr)
-    return;
+  auto Info = CTI->Info;
 
   Result->PointerSize = Info->getPointerWidth(LangAS::Default);
   Result->CharSize = Info->getCharWidth();
@@ -1017,12 +1050,20 @@ extern "C" void Enable_Frame_Pointers(Module *M) {
   M->setFramePointer(FramePointerKind::All);
 }
 
-extern "C" void Enable_Branch_Protection(Module *M) {
+extern "C" bool Enable_Branch_Protection(Module *M, ClangTargetInfo *CTI) {
+  if (!CTI->Info->checkCFProtectionBranchSupported(*CTI->Diags))
+    return false;
+
   M->addModuleFlag(Module::Warning, "cf-protection-branch", 1);
+  return true;
 }
 
-extern "C" void Enable_Return_Protection(Module *M) {
+extern "C" bool Enable_Return_Protection(Module *M, ClangTargetInfo *CTI) {
+  if (!CTI->Info->checkCFProtectionReturnSupported(*CTI->Diags))
+    return false;
+
   M->addModuleFlag(Module::Warning, "cf-protection-return", 1);
+  return true;
 }
 
 extern "C" bool Has_Default_PIE(const char *Target) {

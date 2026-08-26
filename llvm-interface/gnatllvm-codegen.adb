@@ -785,9 +785,14 @@ package body GNATLLVM.Codegen is
          Enable_Stack_Size_Section (Target_Machine);
       end if;
 
-      Get_Target_C_Types
-        (Normalized_Target_Triple.all, CPU.all, ABI.all, Features.all,
-         Target_C_Types, Emit_C, Success);
+      Target_Info := Get_Target_Info (Normalized_Target_Triple.all, CPU.all,
+                                      ABI.all, Features.all);
+
+      if Target_Info = null then
+         Early_Error ("cannot get target information from LLVM");
+      end if;
+
+      Get_Target_C_Types (Target_Info, Target_C_Types, Emit_C, Success);
 
       if not Success then
          Early_Error ("cannot get C type information from LLVM");
@@ -823,11 +828,19 @@ package body GNATLLVM.Codegen is
       end if;
 
       if Protect_Branches then
-         Enable_Branch_Protection (Module);
+         Success := Enable_Branch_Protection (Module, Target_Info);
+
+         if not Success then
+            Early_Error ("branch protection not supported for this target");
+         end if;
       end if;
 
       if Protect_Returns then
-         Enable_Return_Protection (Module);
+         Success := Enable_Return_Protection (Module, Target_Info);
+
+         if not Success then
+            Early_Error ("return protection not supported for this target");
+         end if;
       end if;
 
       --  ??? Replace this by a parameter in system.ads or target.atp

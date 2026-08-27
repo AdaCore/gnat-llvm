@@ -484,37 +484,51 @@ package body GNATLLVM.Wrapper is
       return Does_Not_Return_C (Fn) /= 0;
    end Does_Not_Return;
 
+   ---------------------
+   -- Get_Target_Info --
+   ---------------------
+
+   function Get_Target_Info
+     (Triple : String; CPU : String; ABI : String; Features : String)
+      return Target_Info_T
+   is
+      function Get_Target_Info_C
+        (Triple : String; CPU : String; ABI : String; Features : String)
+         return Target_Info_T
+      with Import, Convention => C, External_Name => "Get_Target_Info";
+   begin
+      return
+        Get_Target_Info_C
+          (Triple & ASCII.NUL,
+           CPU & ASCII.NUL,
+           ABI & ASCII.NUL,
+           Features & ASCII.NUL);
+   end Get_Target_Info;
+
    ------------------------
    -- Get_Target_C_Types --
    ------------------------
 
    procedure Get_Target_C_Types
-     (Triple   : String;
-      CPU      : String;
-      ABI      : String;
-      Features : String;
-      Info     : out Target_C_Type_Info;
-      Emit_C   : Boolean;
-      Success  : out Boolean)
+     (Target_Info : Target_Info_T;
+      Info        : out Target_C_Type_Info;
+      Emit_C      : Boolean;
+      Success     : out Boolean)
    is
       use Interfaces.C;
 
       procedure Get_Target_C_Types_C
-        (Triple   : char_array;
-         CPU      : char_array;
-         ABI      : char_array;
-         Features : char_array;
-         Info     : out Target_C_Type_Info;
-         Emit_C   : LLVM_Bool;
-         Success  : out unsigned_char)
-        with Import, Convention => C, External_Name => "Get_Target_C_Types";
+        (Target_Info : Target_Info_T;
+         Info        : out Target_C_Type_Info;
+         Emit_C      : LLVM_Bool;
+         Success     : out unsigned_char)
+      with Import, Convention => C, External_Name => "Get_Target_C_Types";
 
-      Success_C    : unsigned_char;
+      Success_C : unsigned_char;
 
    begin
       Get_Target_C_Types_C
-        (To_C (Triple), To_C (CPU), To_C (ABI), To_C (Features), Info,
-         Boolean'Pos (Emit_C), Success_C);
+        (Target_Info, Info, Boolean'Pos (Emit_C), Success_C);
       Success := Success_C /= 0;
    end Get_Target_C_Types;
 
@@ -622,6 +636,40 @@ package body GNATLLVM.Wrapper is
    begin
       return Is_Dead_Basic_Block (BB) /= 0;
    end Is_Dead_Basic_Block;
+
+   ------------------------------
+   -- Enable_Branch_Protection --
+   ------------------------------
+
+   function Enable_Branch_Protection
+     (Module : Module_T; Target_Info : Target_Info_T) return Boolean
+   is
+      function Enable_Branch_Protection_C
+        (Module : Module_T; Target_Info : Target_Info_T) return LLVM_Bool
+      with
+        Import,
+        Convention    => C,
+        External_Name => "Enable_Branch_Protection";
+   begin
+      return Enable_Branch_Protection_C (Module, Target_Info) /= 0;
+   end Enable_Branch_Protection;
+
+   ------------------------------
+   -- Enable_Return_Protection --
+   ------------------------------
+
+   function Enable_Return_Protection
+     (Module : Module_T; Target_Info : Target_Info_T) return Boolean
+   is
+      function Enable_Return_Protection_C
+        (Module : Module_T; Target_Info : Target_Info_T) return LLVM_Bool
+      with
+        Import,
+        Convention    => C,
+        External_Name => "Enable_Return_Protection";
+   begin
+      return Enable_Return_Protection_C (Module, Target_Info) /= 0;
+   end Enable_Return_Protection;
 
    --------------------------
    -- Has_Default_PIE --

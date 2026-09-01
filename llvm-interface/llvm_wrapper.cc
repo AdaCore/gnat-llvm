@@ -539,7 +539,7 @@ extern "C" ClangTargetInfo *Get_Target_Info(const char *TargetTriple,
     SmallVector<StringRef, 16> FeatureVector;
     SplitString(FeatureString, FeatureVector, ",");
     for (const auto F : FeatureVector)
-      Result->Options->Features.push_back(F.str());
+      Result->Options->FeaturesAsWritten.push_back(F.str());
   }
 
   // The Clang API requires us to provide a handler for diagnostic messages

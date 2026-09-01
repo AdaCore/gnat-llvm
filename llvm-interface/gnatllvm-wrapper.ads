@@ -554,6 +554,18 @@ package GNATLLVM.Wrapper is
    --  Configure the target machine to emit stack-size information into an
    --  ELF section.
 
+   procedure Enable_Function_Sections (Target_Machine : Target_Machine_T)
+      with Import, Convention => C,
+           External_Name => "Enable_Function_Sections";
+   --  Configure the target machine to emit each function into a separate
+   --  section.
+
+   procedure Enable_Data_Sections (Target_Machine : Target_Machine_T)
+      with Import, Convention => C,
+           External_Name => "Enable_Data_Sections";
+   --  Configure the target machine to emit each data object into a separate
+   --  section.
+
    procedure Create_And_Insert_Label
      (Builder         : DI_Builder_T;
       Scope           : Metadata_T;

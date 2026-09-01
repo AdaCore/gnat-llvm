@@ -11,7 +11,7 @@ project Gnat_LLVM is
    type Build_Type is ("Debug", "Production");
    Build : Build_Type := External ("Build", "Debug");
 
-   type Supported_LLVM_Version is ("19", "21");
+   type Supported_LLVM_Version is ("19", "21", "22");
    LLVM_Version : Supported_LLVM_Version := External ("LLVM_Version", "19");
 
    package Builder is

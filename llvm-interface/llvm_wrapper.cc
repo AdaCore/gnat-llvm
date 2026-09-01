@@ -28,7 +28,11 @@
 #include "llvm/IR/Module.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
+#if LLVM_VERSION_MAJOR < 22
 #include "llvm/Passes/PassPlugin.h"
+#else
+#include "llvm/Plugins/PassPlugin.h"
+#endif
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
@@ -332,10 +336,14 @@ extern "C" Value *Build_MemCpy(IRBuilder<> *bld, Value *Dst, unsigned DstAlign,
   return bld->CreateMemCpy(Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign),
                            Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                            NoAliasTag);
-#else
+#elif LLVM_VERSION_MAJOR < 22
   return bld->CreateMemCpy(
       Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign), Size, isVolatile,
       AAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#else
+  return bld->CreateMemCpy(
+      Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign), Size, isVolatile,
+      AAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag, nullptr));
 #endif
 }
 
@@ -347,10 +355,14 @@ extern "C" Value *Build_MemMove(IRBuilder<> *bld, Value *Dst, unsigned DstAlign,
   return bld->CreateMemMove(Dst, MaybeAlign(DstAlign), Src,
                             MaybeAlign(SrcAlign), Size, isVolatile, TBAATag,
                             ScopeTag, NoAliasTag);
-#else
+#elif LLVM_VERSION_MAJOR < 22
   return bld->CreateMemMove(Dst, MaybeAlign(DstAlign), Src,
                             MaybeAlign(SrcAlign), Size, isVolatile,
                             AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#else
+  return bld->CreateMemMove(
+      Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign), Size, isVolatile,
+      AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag, nullptr));
 #endif
 }
 
@@ -361,20 +373,32 @@ extern "C" Value *Build_MemSet(IRBuilder<> *bld, Value *Ptr, Value *Val,
 #if LLVM_VERSION_MAJOR < 21
   return bld->CreateMemSet(Ptr, Val, Size, MaybeAlign(align), isVolatile,
                            TBAATag, ScopeTag, NoAliasTag);
-#else
+#elif LLVM_VERSION_MAJOR < 22
   return bld->CreateMemSet(Ptr, Val, Size, MaybeAlign(align), isVolatile,
                            AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#else
+  return bld->CreateMemSet(
+      Ptr, Val, Size, MaybeAlign(align), isVolatile,
+      AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag, nullptr));
 #endif
 }
 
 extern "C" CallInst *Create_Lifetime_Start(IRBuilder<> *bld, Value *Ptr,
                                            ConstantInt *Size) {
+#if LLVM_VERSION_MAJOR < 22
   return bld->CreateLifetimeStart(Ptr, Size);
+#else
+  return bld->CreateLifetimeStart(Ptr);
+#endif
 }
 
 extern "C" CallInst *Create_Lifetime_End(IRBuilder<> *bld, Value *Ptr,
                                          ConstantInt *Size) {
+#if LLVM_VERSION_MAJOR < 22
   return bld->CreateLifetimeEnd(Ptr, Size);
+#else
+  return bld->CreateLifetimeEnd(Ptr);
+#endif
 }
 
 extern "C" CallInst *Create_Invariant_Start(IRBuilder<> *bld, Value *Ptr,
@@ -734,8 +758,13 @@ LLVM_Optimize_Module(Module *M, TargetMachine *TM, int CodeOptLevel,
           if (SanCovIgnoreList != nullptr)
             IgnoreListFiles.push_back(SanCovIgnoreList);
 
+#if LLVM_VERSION_MAJOR < 22
           MPM.addPass(SanitizerCoveragePass(CoverageOpts, AllowListFiles,
                                             IgnoreListFiles));
+#else
+          MPM.addPass(SanitizerCoveragePass(CoverageOpts, nullptr,
+                                            AllowListFiles, IgnoreListFiles));
+#endif
         }
 
         if (EnableAddressSanitizer)

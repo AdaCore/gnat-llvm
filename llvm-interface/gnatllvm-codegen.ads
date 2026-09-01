@@ -106,6 +106,12 @@ package GNATLLVM.Codegen is
    Stack_Size_Section : Boolean := False;
    --  True if we should emit stack-size information into an ELF section
 
+   Function_Sections : Boolean := False;
+   --  True if each function should be emitted into a separate section
+
+   Data_Sections : Boolean := False;
+   --  True if each data object should be emitted into a separate section
+
    Enable_Execute_Stack : Boolean := False;
    --  True if we have to explicitly make the stack executable when we need
    --  it to be (e.g., when using stack-allocated trampolines).

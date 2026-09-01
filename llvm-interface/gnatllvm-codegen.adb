@@ -156,6 +156,14 @@ package body GNATLLVM.Codegen is
          Call_Graph_Section := True;
       elsif S = "-fstack-size-section" then
          Stack_Size_Section := True;
+      elsif S = "-ffunction-sections" then
+         Function_Sections := True;
+      elsif S = "-fno-function-sections" then
+         Function_Sections := False;
+      elsif S = "-fdata-sections" then
+         Data_Sections := True;
+      elsif S = "-fno-data-sections" then
+         Data_Sections := False;
       elsif S = "-fshort-enums" then
          Short_Enums := True;
       elsif S = "-foptimize-ir" then
@@ -783,6 +791,14 @@ package body GNATLLVM.Codegen is
 
       if Stack_Size_Section then
          Enable_Stack_Size_Section (Target_Machine);
+      end if;
+
+      if Function_Sections then
+         Enable_Function_Sections (Target_Machine);
+      end if;
+
+      if Data_Sections then
+         Enable_Data_Sections (Target_Machine);
       end if;
 
       Target_Info := Get_Target_Info (Normalized_Target_Triple.all, CPU.all,

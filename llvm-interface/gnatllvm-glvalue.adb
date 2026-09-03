@@ -2005,6 +2005,15 @@ package body GNATLLVM.GLValue is
       Add_Hardware_Shadow_Stack_Attribute (+V);
    end Add_Hardware_Shadow_Stack_Attribute;
 
+   -------------------------------
+   -- Add_No_Red_Zone_Attribute --
+   -------------------------------
+
+   procedure Add_No_Red_Zone_Attribute (V : GL_Value) is
+   begin
+      Add_No_Red_Zone_Attribute (+V);
+   end Add_No_Red_Zone_Attribute;
+
    -------------------
    -- Set_DSO_Local --
    -------------------

@@ -1137,6 +1137,10 @@ extern "C" bool Is_x86(const char *Target) {
   return TargetTriple.getArch() == Triple::x86;
 }
 
+extern "C" bool Is_x86_Family(const char *Target) {
+  return Triple(Target).isX86();
+}
+
 extern "C" bool Is_Windows(const char *Target) {
   Triple TargetTriple(Target);
   return TargetTriple.isOSWindows();

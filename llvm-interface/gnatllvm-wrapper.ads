@@ -504,6 +504,8 @@ package GNATLLVM.Wrapper is
 
    function Is_x86 (Triple : String) return Boolean;
 
+   function Is_x86_Family (Triple : String) return Boolean;
+
    function Is_Windows (Triple : String) return Boolean;
    --  True if the target is a Windows (PE/COFF) target
 

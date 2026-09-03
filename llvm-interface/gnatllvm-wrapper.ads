@@ -151,6 +151,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_No_Implicit_Float_Attribute";
 
+   procedure Add_No_Red_Zone_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_No_Red_Zone_Attribute";
+
    procedure Add_Uwtable_Attribute (Func : Value_T)
      with Import, Convention => C,
           External_Name => "Add_Uwtable_Attribute";

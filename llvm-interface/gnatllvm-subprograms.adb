@@ -1507,6 +1507,10 @@ package body GNATLLVM.Subprograms is
          Add_Named_Attribute (Func, "frame-pointer", "all");
       end if;
 
+      if No_Red_Zone then
+         Add_No_Red_Zone_Attribute (Func);
+      end if;
+
       if No_Tail_Calls then
          Add_Named_Attribute (Func, "disable-tail-calls", "true");
       end if;

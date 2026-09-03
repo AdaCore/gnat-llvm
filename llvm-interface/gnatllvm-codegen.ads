@@ -68,6 +68,7 @@ package GNATLLVM.Codegen is
    PIC_Level                      : PIC_PIE_Level := 0;
    PIE_Level                      : PIC_PIE_Level := 0;
    No_Implicit_Float              : Boolean       := False;
+   No_Red_Zone                    : Boolean       := False;
    Enable_Experimental_Extensions : Boolean       := False;
    --  Code generation options
 

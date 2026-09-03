@@ -255,6 +255,10 @@ package body GNATLLVM.Codegen is
          Reloc_Mode := Reloc_Default;
       elsif S = "-mno-implicit-float" then
          No_Implicit_Float := True;
+      elsif S = "-mno-red-zone" then
+         No_Red_Zone := True;
+      elsif S = "-mred-zone" then
+         No_Red_Zone := False;
       elsif S = "-menable-experimental-extensions" then
          Enable_Experimental_Extensions := True;
       elsif S = "-mllvm" then

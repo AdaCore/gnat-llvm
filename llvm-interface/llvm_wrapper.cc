@@ -213,6 +213,10 @@ extern "C" void Add_Hardware_Shadow_Stack_Attribute(Function *fn) {
   fn->addFnAttr("hw-shadow-stack");
 }
 
+extern "C" void Add_No_Red_Zone_Attribute(Function *fn) {
+  fn->addFnAttr(Attribute::NoRedZone);
+}
+
 extern "C" bool Has_Inline_Attribute(Function *fn) {
   return fn->hasFnAttribute(Attribute::InlineHint);
 }

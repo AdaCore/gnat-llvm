@@ -2013,7 +2013,7 @@ package body GNATLLVM.Exprs is
          Input_Pos        : Nat              := 0;
          Need_Comma       : Boolean          := False;
          Constraint_Len   : constant Integer :=
-           Integer (Num_Inputs + Constraint_Length + 3);
+           Integer (Num_Inputs + (Constraint_Length * 7) + 3);
          In_Template_Len  : constant Integer :=
            Integer (String_Length (Template_Strval));
          Out_Template_Len : constant Integer :=
@@ -2048,13 +2048,81 @@ package body GNATLLVM.Exprs is
          --------------------
 
          procedure Add_Constraint (N : N_String_Literal_Id) is
+            Is_X86_Target : constant Boolean :=
+              Is_x86_Family (Normalized_Target_Triple.all);
+            Length        : constant Nat     := String_Length (Strval (N));
+            C             : Character;
+            J             : Nat              := 1;
+
+            procedure Add_String (S : String);
+
+            ----------------
+            -- Add_String --
+            ----------------
+
+            procedure Add_String (S : String) is
+            begin
+               for C of S loop
+                  Add_Char (C);
+               end loop;
+            end Add_String;
+
          begin
             if Need_Comma then
                Add_Char (',');
             end if;
 
-            for J in 1 .. String_Length (Strval (N)) loop
-               Add_Char (Get_Character (Get_String_Char (Strval (N), J)));
+            while J <= Length loop
+               C := Get_Character (Get_String_Char (Strval (N), J));
+
+               if not Is_X86_Target then
+                  Add_Char (C);
+                  J := J + 1;
+
+               --  LLVM uses '^' to mark multi-letter constraints. Process
+               --  these before single-letter constraints so, for example,
+               --  the 't' in "Yt" is not mistaken for the x87 register.
+
+               elsif J < Length
+                 and then
+                   ((C = 'W'
+                       and then Get_Character
+                         (Get_String_Char (Strval (N), J + 1)) = 's')
+                    or else
+                      (C = 'Y'
+                       and then Get_Character
+                         (Get_String_Char (Strval (N), J + 1))
+                           in '2' | 'i' | 'k' | 'm' | 't' | 'z')
+                    or else
+                      (C = 'j'
+                       and then Get_Character
+                         (Get_String_Char (Strval (N), J + 1)) in 'r' | 'R'))
+               then
+                  Add_Char ('^');
+                  Add_Char (C);
+                  Add_Char
+                    (Get_Character (Get_String_Char (Strval (N), J + 1)));
+                  J := J + 2;
+
+               --  LLVM expects fixed x86 registers in braces, unlike GCC's
+               --  single-letter constraints. The backend adjusts these base
+               --  register names to the operand width.
+
+               else
+                  case C is
+                     when 'a' => Add_String ("{ax}");
+                     when 'b' => Add_String ("{bx}");
+                     when 'c' => Add_String ("{cx}");
+                     when 'd' => Add_String ("{dx}");
+                     when 'S' => Add_String ("{si}");
+                     when 'D' => Add_String ("{di}");
+                     when 't' => Add_String ("{st}");
+                     when 'u' => Add_String ("{st(1)}");
+                     when others => Add_Char (C);
+                  end case;
+
+                  J := J + 1;
+               end if;
             end loop;
          end Add_Constraint;
 

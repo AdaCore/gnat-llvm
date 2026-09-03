@@ -727,6 +727,17 @@ package body GNATLLVM.Wrapper is
       return Is_x86 (Triple & ASCII.NUL) /= 0;
    end Is_x86;
 
+   -------------------
+   -- Is_x86_Family --
+   -------------------
+
+   function Is_x86_Family (Triple : String) return Boolean is
+      function Is_x86_Family (Triple : String) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Is_x86_Family";
+   begin
+      return Is_x86_Family (Triple & ASCII.NUL) /= 0;
+   end Is_x86_Family;
+
    ----------------
    -- Is_Windows --
    ----------------

@@ -961,10 +961,11 @@ package GNATLLVM.Instructions is
           Post => Present (Null_Derived_Ptr'Result);
 
    function Call
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      Name : String    := "";
-      E    : Entity_Id := Empty) return GL_Value
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call'Result), Inline;
@@ -973,8 +974,9 @@ package GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call'Result), Inline;
@@ -984,8 +986,9 @@ package GNATLLVM.Instructions is
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       GT     : GL_Type;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func) and then Present (GT)
                   and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
@@ -995,18 +998,20 @@ package GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Is_Reference (Call_Ref'Result), Inline;
 
    function Call_Relationship
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      R    : GL_Relationship;
-      Name : String    := "";
-      E    : Entity_Id := Empty) return GL_Value
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      R      : GL_Relationship;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call_Relationship'Result), Inline;
@@ -1015,8 +1020,9 @@ package GNATLLVM.Instructions is
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       R      : GL_Relationship;
-      Name   : String    := "";
-      E      : Entity_Id := Empty) return GL_Value
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location) return GL_Value
      with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call_Relationship'Result), Inline;
@@ -1024,20 +1030,22 @@ package GNATLLVM.Instructions is
      --  relationship.
 
    procedure Call
-     (Func : GL_Value;
-      Args : GL_Value_Array;
-      Name : String      := "";
-      E    : Entity_Id   := Empty)
+     (Func   : GL_Value;
+      Args   : GL_Value_Array;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location)
    with Pre => Present (Func)
                and then (for all V of Args => Present (V)),
      Inline;
 
    procedure Call
-     (Func  : GL_Value;
-      Fn_MD : MD_Type;
-      Args  : GL_Value_Array;
-      Name  : String    := "";
-      E     : Entity_Id := Empty)
+     (Func   : GL_Value;
+      Fn_MD  : MD_Type;
+      Args   : GL_Value_Array;
+      Name   : String     := "";
+      E      : Entity_Id  := Empty;
+      CG_Loc : Source_Ptr := No_Location)
      with Pre => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Inline;

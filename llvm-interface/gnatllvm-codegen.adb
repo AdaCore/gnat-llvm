@@ -1002,6 +1002,24 @@ package body GNATLLVM.Codegen is
          end if;
       end if;
 
+      --  When we emit the call-graph section, put the parts of the graph
+      --  that LLVM's own sections cannot express into sections of their own.
+      --  We do it here, after the module is optimized, so the edges name the
+      --  functions that really contain the calls, and before the output is
+      --  written, so assembly output carries the sections as well.
+
+      if Call_Graph_Section then
+         declare
+            Edges : constant String := Get_Indirect_Call_Edges (Module);
+
+         begin
+            if Edges /= "" then
+               Append_Section_Data
+                 (Module, ".gnat.callgraph.indirect", Edges);
+            end if;
+         end;
+      end if;
+
       --  Output the translation
 
       case Code_Generation is

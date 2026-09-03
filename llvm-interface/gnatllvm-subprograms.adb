@@ -2676,7 +2676,8 @@ package body GNATLLVM.Subprograms is
 
       case LRK is
          when Void =>
-            Call (LLVM_Func, Fn_Typ, Args, E => Subp_Entity);
+            Call (LLVM_Func, Fn_Typ, Args, E => Subp_Entity,
+                  CG_Loc => Sloc (N));
 
             --  If we're emitting C and the return type is of zero size,
             --  we may get here, in which case our result is undef.
@@ -2687,9 +2688,11 @@ package body GNATLLVM.Subprograms is
 
          when Subprog_Return =>
             if RK = RK_By_Reference then
-               Result := Call_Ref (LLVM_Func, Fn_Typ, Args, E => Subp_Entity);
+               Result := Call_Ref (LLVM_Func, Fn_Typ, Args,
+                                   E => Subp_Entity, CG_Loc => Sloc (N));
             else
-               Result := Call (LLVM_Func, Fn_Typ, Args, E => Subp_Entity);
+               Result := Call (LLVM_Func, Fn_Typ, Args, E => Subp_Entity,
+                               CG_Loc => Sloc (N));
             end if;
 
          when Out_Return =>
@@ -2699,14 +2702,14 @@ package body GNATLLVM.Subprograms is
             Write_Back
               (Out_LHSs (1), Out_Flds (1), Out_Idxs (1), Out_BRDs (1),
                Call (LLVM_Func, Fn_Typ, Args, Get_Param_GL_Type (Out_Param),
-                     E => Subp_Entity),
+                     E => Subp_Entity, CG_Loc => Sloc (N)),
                LVs => Out_LVs (1),
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return :=
               Call_Relationship (LLVM_Func, Fn_Typ, Args, Unknown,
-                                 E => Subp_Entity);
+                                 E => Subp_Entity, CG_Loc => Sloc (N));
 
             --  First extract the return value (possibly returned by-ref)
 

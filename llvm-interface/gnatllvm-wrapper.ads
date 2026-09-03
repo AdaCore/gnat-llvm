@@ -565,6 +565,33 @@ package GNATLLVM.Wrapper is
            External_Name => "Enable_Data_Sections";
    --  Configure the target machine to emit each data object into a separate
    --  section.
+   procedure Set_Indirect_Call_Location
+     (Call : Value_T;
+      File : String;
+      Line : Logical_Line_Number;
+      Col  : Column_Number);
+   --  Tag the indirect call instruction Call with its source location as
+   --  metadata. The tag survives inlining, so a post-optimization walk
+   --  (Get_Indirect_Call_Edges) can emit a "__indirect_call" edge attributed
+   --  to the function that actually ends up containing the call. A no-op on
+   --  anything that is not an indirect call.
+
+   function Get_Indirect_Call_Edges (Module : Module_T) return String;
+   --  Walk the (optimized) Module and return a "__indirect_call" edge for
+   --  every call that is still indirect there. An edge carries the tagged
+   --  location as its label when the tag survived optimization and no label at
+   --  all when it did not.
+   --  GNATstack correlates a labelled edge with the front-end dispatching
+   --  descriptor of the same location, resolving dispatch even when the
+   --  source-level caller was inlined and reports an unlabelled one as
+   --  an unresolved indirect call.
+
+   procedure Append_Section_Data
+     (Module : Module_T; Section : String; Text : String);
+   --  Append Text to Module as the content of the named object section, as
+   --  module-level inline assembly.  The linker concatenates the sections of
+   --  all the objects it links, so a linked binary carries the blocks of
+   --  exactly the units it contains.
 
    procedure Create_And_Insert_Label
      (Builder         : DI_Builder_T;

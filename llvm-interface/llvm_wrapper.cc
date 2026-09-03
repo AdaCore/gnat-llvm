@@ -1399,6 +1399,117 @@ extern "C" void Enable_Data_Sections(TargetMachine *TM) {
   TM->Options.DataSections = 1;
 }
 
+// Metadata kind used to tag an indirect/dispatching call with its source
+// location ("file:line:col").  The tag is attached at code-generation time
+// (when the location is known) and survives inlining, so the post-optimization
+// walk below can attribute the call to whatever function ends up containing it.
+static const char *const CG_Loc_Kind = "gnat.cg.loc";
+
+// Tag an indirect/dispatching call instruction with its source location.  A
+// no-op on anything that is not an indirect call.
+extern "C" void Set_Indirect_Call_Location(LLVMValueRef CallRef,
+                                           const char *File, int Line,
+                                           int Col) {
+  CallBase *CB = dyn_cast_or_null<CallBase>(unwrap(CallRef));
+  if (!CB || !CB->isIndirectCall())
+    return;
+  LLVMContext &Ctx = CB->getContext();
+  std::string Loc =
+      std::string(File ? File : "") + ":" + std::to_string(Line) + ":" +
+      std::to_string(Col);
+  CB->setMetadata(CG_Loc_Kind, MDNode::get(Ctx, MDString::get(Ctx, Loc)));
+}
+
+// Walk the optimized module and produce one "__indirect_call" edge for every
+// call that is still an indirect call there. This resolves dispatch even when
+// the source-level caller was inlined. The result is the VCG text, allocated
+// with strdup for the caller to free, or null when the module has no
+// indirect call.
+//
+// An untagged indirect call is emitted without a "label:", which is what GCC
+// writes for a statement with no location, and GNAT Stack then reports an
+// unresolved indirect call.
+extern "C" char *Get_Indirect_Call_Edges(LLVMModuleRef ModRef) {
+  Module *M = unwrap(ModRef);
+  unsigned KindID = M->getContext().getMDKindID(CG_Loc_Kind);
+  std::string Buf;
+  for (Function &Fn : *M)
+    for (BasicBlock &BB : Fn)
+      for (Instruction &I : BB) {
+        CallBase *CB = dyn_cast<CallBase>(&I);
+        if (CB == nullptr || !CB->isIndirectCall())
+          continue;
+
+        // The placeholder node for the edges' common target. This is what
+        // GCC does (dump_final_node_vcg_start in gcc/toplev.cc), printed once
+        // per unit that has an indirect call, "shape : ellipse" meaning
+        // "referenced but not defined here". GNATStack parses the line and
+        // throws it away, so we emit it for parity with GCC's output and for
+        // any other reader of the format.
+
+        if (Buf.empty())
+          Buf = "node: { title: \"__indirect_call\" label: \"Indirect Call "
+                "Placeholder\" shape : ellipse }\n";
+
+        Buf += "edge: { sourcename: \"";
+        Buf += Fn.getName().str();
+        Buf += "\" targetname: \"__indirect_call\"";
+
+        MDNode *MD = CB->getMetadata(KindID);
+        MDString *S = MD != nullptr && MD->getNumOperands() != 0
+                          ? dyn_cast<MDString>(MD->getOperand(0))
+                          : nullptr;
+        if (S != nullptr) {
+          Buf += " label: \"";
+          Buf += S->getString().str();
+          Buf += "\"";
+        }
+
+        Buf += " }\n";
+      }
+
+  if (Buf.empty())
+    return nullptr;
+
+  return strdup(Buf.c_str());
+}
+
+// Append Text to the module as the whole content of the named section, using
+// module-level inline assembly.  The linker then concatenates the sections of
+// every object it links, so a linked binary carries the blocks of exactly the
+// units it contains.
+//
+// Text is emitted as a .byte list rather than with .ascii: it contains quotes
+// and backslashes, and a .byte list has no quoting rules to get wrong.  We use
+// .pushsection/.popsection and not .section/.previous because module-level
+// assembly is emitted before any function, so there is no previous section to
+// return to. We give no section type: SHT_PROGBITS is what the assembler
+// defaults to.
+extern "C" void Append_Section_Data(LLVMModuleRef ModRef, const char *Section,
+                                    const char *Text) {
+  if (Section == nullptr || Text == nullptr || *Text == '\0')
+    return;
+
+  std::string Asm = "\t.pushsection\t";
+  Asm += Section;
+  Asm += ",\"\"\n";
+
+  unsigned Count = 0;
+  for (const char *P = Text; *P != '\0'; ++P) {
+    Asm += (Count % 16 == 0 ? "\t.byte\t" : ",");
+    Asm += utostr((unsigned char) *P);
+
+    if (++Count % 16 == 0)
+      Asm += "\n";
+  }
+
+  if (Count % 16 != 0)
+    Asm += "\n";
+
+  Asm += "\t.popsection\n";
+  unwrap(ModRef)->appendModuleInlineAsm(Asm);
+}
+
 extern "C" void Create_And_Insert_Label(LLVMDIBuilderRef Builder,
                                         LLVMMetadataRef Scope, const char *Name,
                                         LLVMMetadataRef File, unsigned LineNo,

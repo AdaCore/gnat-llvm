@@ -48,14 +48,6 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
 
-   package Switches is new Table.Table
-     (Table_Component_Type => String_Access,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switches");
-
    Target_Triple_Set             : Boolean := False;
    PIC_PIE_Set                   : Boolean := False;
    Unroll_Loops_Set              : Boolean := False;
@@ -76,6 +68,9 @@ package body GNATLLVM.Codegen is
    --  Name of the architecture requested with -march.
 
    Dump_Targets                   : Boolean := False;
+
+   For_LLVM                       : Boolean := False;
+   --  True if the next switch is directly for LLVM
 
    procedure Process_Switch (S : String);
    --  Process one command-line switch
@@ -114,6 +109,12 @@ package body GNATLLVM.Codegen is
    begin
       --  ??? At some point, this and Is_Back_End_Switch need to have
       --  some sort of common code.
+
+      if For_LLVM then
+         Switches.Append (new String'(S));
+         For_LLVM := False;
+         return;
+      end if;
 
       if Len > 0 and then S (First) /= '-' then
          if Is_Regular_File (S) then
@@ -256,6 +257,8 @@ package body GNATLLVM.Codegen is
          No_Implicit_Float := True;
       elsif S = "-menable-experimental-extensions" then
          Enable_Experimental_Extensions := True;
+      elsif S = "-mllvm" then
+         For_LLVM := True;
 
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.
@@ -1087,12 +1090,19 @@ package body GNATLLVM.Codegen is
       --  Return True if Switch starts with S
 
    begin
+      --  For now we allow the -f/-m/-W/-w, -nostdlib and -pipe switches,
+      --  even though they will have no effect, though some are handled in
+      --  Scan_Command_Line above. This permits compatibility with
+      --  existing scripts.
+
       if not Is_Switch (Switch) then
          return False;
       elsif Switch = "--dump-ir"
         or else Switch = "--dump-bc"
         or else Switch = "--write-bc"
         or else Switch = "--dump-targets"
+        or else Switch = "-nostdlib"
+        or else Switch = "-pipe"
         or else Switch = "-S"
         or else Switch = "-g"
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
@@ -1101,17 +1111,26 @@ package body GNATLLVM.Codegen is
         or else Starts_With ("-llvm-")
         or else Starts_With ("-emit-")
         or else C_Is_Switch (Switch)
+        or else Switch (First + 1) in 'f' | 'm' | 'W' | 'w'
       then
          return True;
       end if;
 
-      --  For now we allow the -f/-m/-W/-w, -nostdlib and -pipe switches,
-      --  even though they will have no effect, though some are handled in
-      --  Scan_Command_Line above. This permits compatibility with
-      --  existing scripts.
+      --  We process command-line switches during elaboration, so our own
+      --  processing has already happened at this point. If the command line
+      --  contained switches that we're supposed to pass through to LLVM, we
+      --  flag them as back-end switches here. Iterating over the table is
+      --  inefficient, but we don't expect a large number of LLVM switches, and
+      --  this check is performed as a last resort before we cause GNAT to
+      --  error out due to an invalid switch.
 
-      return Switch (First + 1) in 'f' | 'm' | 'W' | 'w'
-        or else Switch = "-nostdlib" or else Switch = "-pipe";
+      --  ??? There's a risk of incorrectly classifying a switch as a back-end
+      --  switch if it *also* appears as an LLVM switch. For example, "-mllvm
+      --  -bar -bar" would pass "-bar" through to LLVM but also set "-bar" for
+      --  us; we would incorrectly tell GNAT that it's a valid back-end switch.
+
+      return (for some J in 1 .. Switches.Last =>
+                Switch = Switches.Table (J).all);
    end Is_Back_End_Switch;
 
    ----------------------

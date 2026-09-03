@@ -191,4 +191,13 @@ package GNATLLVM.Codegen is
       Table_Name           => "Plugins");
    --  Pass plugins to load
 
+   package Switches is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switches");
+   --  Switches to forward to LLVM
+
 end GNATLLVM.Codegen;

@@ -1,5 +1,6 @@
 #include <memory>
 #include <optional>
+#include <stdio.h>
 #include <string.h>
 
 #include "llvm-c/Core.h"
@@ -7,6 +8,7 @@
 #include "llvm-c/Types.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -35,6 +37,7 @@
 #endif
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
@@ -1423,6 +1426,66 @@ extern "C" void Enable_Function_Sections(TargetMachine *TM) {
 
 extern "C" void Enable_Data_Sections(TargetMachine *TM) {
   TM->Options.DataSections = 1;
+}
+
+// The front-end call-graph info file. GCC's toplev opens this stream before
+// invoking gnat1, and Exp_CG.Generate_CG_Output writes the dispatching-call
+// edges and the tagged-type "class{}" declarations to it. gnat-llvm has no
+// toplev, so the two routines below open it and read it back, and
+// GNATLLVM.Codegen.Generate_Code puts the text into an object section.
+//
+// The variable is defined in gcc_missing.c.
+extern "C" FILE *callgraph_info_file;
+
+// Open a temporary stream as the call-graph info file and return true on
+// success. Returns false, and changes nothing, if a stream is already open or
+// if the file cannot be created. The caller diagnoses both the same way.
+//
+// tmpfile is deliberate and not one of LLVM's temporary file helpers.
+// Exp_CG writes through an imported fputs, so the stream has to be a C
+// FILE *, and nothing in LLVM gives one. tmpfile also has the OS remove
+// the file on close and on abnormal termination.
+extern "C" bool gnatllvm_open_callgraph_info_file(void) {
+  if (callgraph_info_file != nullptr)
+    return false;
+
+  callgraph_info_file = tmpfile();
+
+  return callgraph_info_file != nullptr;
+}
+
+// Return everything written to the call-graph info file so far, as a string
+// allocated with strdup for the caller to free, and close the stream. An
+// empty string means a unit with no descriptors, and null means that no
+// stream was open or that the text could not be read.
+// callgraph_info_file goes back to null either way, so the later call of
+// Generate_CG_Output from gnat1drv finds no stream and does nothing.
+extern "C" char *gnatllvm_take_callgraph_info_text(void) {
+  FILE *F = callgraph_info_file;
+  callgraph_info_file = nullptr;
+
+  if (F == nullptr)
+    return nullptr;
+
+  char *Result = nullptr;
+  SmallString<0> Text;
+
+  // Generate_CG_Output has left f at the end, whereas readNativeFileToEOF
+  // reads from the current position, so we have to rewind.
+
+  if (fflush(F) == 0 && !ferror(F)) {
+    rewind(F);
+
+    if (Error E = sys::fs::readNativeFileToEOF(
+            sys::fs::convertFDToNativeFile(fileno(F)), Text))
+      consumeError(std::move(E));
+    else
+      Result = strdup(Text.c_str());
+  }
+
+  fclose(F);
+
+  return Result;
 }
 
 // Metadata kind used to tag an indirect/dispatching call with its source

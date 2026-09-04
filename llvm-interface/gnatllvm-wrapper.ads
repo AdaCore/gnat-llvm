@@ -578,6 +578,25 @@ package GNATLLVM.Wrapper is
            External_Name => "Enable_Data_Sections";
    --  Configure the target machine to emit each data object into a separate
    --  section.
+
+   function Open_Callgraph_Info_File return Boolean;
+   --  Open a temporary stream as the front-end call-graph info file consumed
+   --  by Exp_CG.Generate_CG_Output, which emits the dispatching-call edges
+   --  and the tagged-type "class{}" declarations GNATstack needs. GCC's
+   --  toplev opens this file before invoking gnat1, and gnat-llvm opens it
+   --  here and reads it back with Take_Callgraph_Info_Text. False if it
+   --  cannot be created or is already open.
+
+   function Take_Callgraph_Info_Text (Success : out Boolean) return String;
+   --  Return everything Exp_CG.Generate_CG_Output has written to the
+   --  call-graph info file, and close it. The file goes back to being
+   --  unopened, so the later call of Generate_CG_Output from gnat1drv does
+   --  nothing. Success is False if there is no file open, or if the text
+   --  could not be read, and then the result is the empty string. An empty
+   --  result with Success True means that the unit has no descriptors,
+   --  which is the common case: most units declare no tagged type and
+   --  contain no dispatching call.
+
    procedure Set_Indirect_Call_Location
      (Call : Value_T;
       File : String;

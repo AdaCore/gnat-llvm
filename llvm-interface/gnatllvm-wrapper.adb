@@ -898,6 +898,38 @@ package body GNATLLVM.Wrapper is
                                  Block);
    end Create_And_Insert_Label;
 
+   ------------------------------
+   -- Open_Callgraph_Info_File --
+   ------------------------------
+
+   function Open_Callgraph_Info_File return Boolean is
+      function Open_Callgraph_Info_File_C return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "gnatllvm_open_callgraph_info_file";
+
+   begin
+      return Open_Callgraph_Info_File_C /= 0;
+   end Open_Callgraph_Info_File;
+
+   ------------------------------
+   -- Take_Callgraph_Info_Text --
+   ------------------------------
+
+   function Take_Callgraph_Info_Text (Success : out Boolean) return String is
+      function Take_Callgraph_Info_Text_C return chars_ptr
+        with Import, Convention => C,
+             External_Name => "gnatllvm_take_callgraph_info_text";
+
+      Result_C : chars_ptr       := Take_Callgraph_Info_Text_C;
+      Result   : constant String :=
+        (if Result_C = Null_Ptr then "" else Value (Result_C));
+
+   begin
+      Success := Result_C /= Null_Ptr;
+      Free (Result_C);
+      return Result;
+   end Take_Callgraph_Info_Text;
+
    --------------------------------
    -- Set_Indirect_Call_Location --
    --------------------------------

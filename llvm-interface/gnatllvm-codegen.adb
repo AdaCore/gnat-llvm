@@ -34,6 +34,7 @@ with CCG; use CCG;
 
 with Debug;    use Debug;
 with Errout;   use Errout;
+with Exp_CG;   use Exp_CG;
 with Set_Targ; use Set_Targ;
 with Lib;      use Lib;
 with Opt;      use Opt;
@@ -1046,11 +1047,64 @@ package body GNATLLVM.Codegen is
       --  functions that really contain the calls, and before the output is
       --  written, so assembly output carries the sections as well.
 
-      if Call_Graph_Section then
+      --  They go into two sections and not one, because GNATstack has to
+      --  read a dispatching descriptor before the __indirect_call edge that
+      --  names the same source location. It matters across units
+      --  because with -gnatn a dispatching call of one unit can be inlined
+      --  into another, so the edge and the descriptor end up in different
+      --  objects and the linker is free to place them in either order.
+      --  With two sections the reader emits all descriptors before all edges,
+      --  whatever that order is.
+
+      --  Do not collect anything when the compilation is not going to write
+      --  any output, and not when we generate C code.
+
+      if Call_Graph_Section and then Code_Generation not in None | Write_C then
          declare
             Edges : constant String := Get_Indirect_Call_Edges (Module);
 
          begin
+            --  The descriptors come from the front end. Exp_CG needs the
+            --  fully qualified names, which Exp_Dbug.Qualify_All_Entity_Names
+            --  has assigned before the back end was entered, so we can call
+            --  it here. gnat1drv calls it again once we return, and finds no
+            --  file open then, so it does nothing.
+
+            --  If we fail in any case below we don't want to output the object
+            --  file, which would have only a part of the graph. A consecutive
+            --  build with gnatmake/gprbuild would say this unit is up to date
+            --  and we would never get the complete graph in the object.
+
+            if not Open_Callgraph_Info_File then
+               Error_Msg_N
+                 ("could not create the call-graph info file", GNAT_Root);
+               Code_Generation := None;
+            else
+               Generate_CG_Output;
+
+               declare
+                  Success     : Boolean;
+                  Descriptors : constant String :=
+                    Take_Callgraph_Info_Text (Success);
+
+               begin
+                  --  An empty text is normal, which means that the unit has no
+                  --  descriptors. Only a failure to read the file is an
+                  --  error, and it has to be one, because otherwise we would
+                  --  write an object whose call graph is missing the
+                  --  descriptors.
+
+                  if not Success then
+                     Error_Msg_N
+                       ("could not read the call-graph info file", GNAT_Root);
+                     Code_Generation := None;
+                  else
+                     Append_Section_Data
+                       (Module, ".gnat.callgraph.dispatch", Descriptors);
+                  end if;
+               end;
+            end if;
+
             if Edges /= "" then
                Append_Section_Data
                  (Module, ".gnat.callgraph.indirect", Edges);

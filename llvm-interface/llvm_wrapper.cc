@@ -46,6 +46,7 @@
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
@@ -200,6 +201,10 @@ extern "C" void Add_Opt_For_Fuzzing_Attribute(Function *fn) {
 
 extern "C" void Add_Sanitize_Address_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::SanitizeAddress);
+}
+
+extern "C" void Add_Sanitize_HW_Address_Attribute(Function *fn) {
+  fn->addFnAttr(Attribute::SanitizeHWAddress);
 }
 
 extern "C" void Add_No_Implicit_Float_Attribute(Function *fn) {
@@ -675,8 +680,9 @@ LLVM_Optimize_Module(Module *M, TargetMachine *TM, int CodeOptLevel,
                      bool LoopVectorization, bool SLPVectorization,
                      bool MergeFunctions, bool PrepareForThinLTO,
                      bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
-                     bool EnableAddressSanitizer, const char *SanCovAllowList,
-                     const char *SanCovIgnoreList, const char **PassPluginNames,
+                     bool EnableAddressSanitizer, bool EnableHWAddressSanitizer,
+                     const char *SanCovAllowList, const char *SanCovIgnoreList,
+                     const char **PassPluginNames,
                      char **ErrorMessage) {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
@@ -773,6 +779,9 @@ LLVM_Optimize_Module(Module *M, TargetMachine *TM, int CodeOptLevel,
 
         if (EnableAddressSanitizer)
           MPM.addPass(AddressSanitizerPass(AddressSanitizerOptions()));
+
+        if (EnableHWAddressSanitizer)
+          MPM.addPass(HWAddressSanitizerPass(HWAddressSanitizerOptions()));
       });
 
   ModulePassManager MPM;
@@ -1122,6 +1131,15 @@ extern "C" bool Has_Call_Graph_Section(const char *Target) {
   // MCObjectFileInfo leaves CallGraphSection null for every other object
   // format and AsmPrinter::emitCallGraphSection dereferences it.
   return Triple(Target).isOSBinFormatELF();
+}
+
+extern "C" bool Has_HW_Address_Sanitizer(const char *Target) {
+  Triple TargetTriple(Target);
+
+  return (TargetTriple.getArch() == Triple::x86_64 ||
+          TargetTriple.getArch() == Triple::aarch64 ||
+          TargetTriple.getArch() == Triple::riscv64) &&
+         (TargetTriple.isOSLinux() || TargetTriple.isOSUnknown());
 }
 
 extern "C" bool Needs_Frame_Pointers(const char *Target) {

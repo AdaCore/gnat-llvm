@@ -1527,6 +1527,10 @@ package body GNATLLVM.Subprograms is
          Add_Sanitize_Address_Attribute (Func);
       end if;
 
+      if Enable_HW_Address_Sanitizer then
+         Add_Sanitize_HW_Address_Attribute (Func);
+      end if;
+
       if No_Implicit_Float then
          Add_No_Implicit_Float_Attribute (Func);
       end if;

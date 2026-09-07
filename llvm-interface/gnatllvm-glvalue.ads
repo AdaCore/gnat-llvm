@@ -1249,6 +1249,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Add the SanitizeAddress attribute to function V
 
+   procedure Add_Sanitize_HW_Address_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+   --  Add the SanitizeHWAddress attribute to function V
+
    procedure Add_No_Implicit_Float_Attribute (V : GL_Value)
      with Pre => Is_A_Function (V), Inline;
    --  Add the NoImplicitFloat attribute to function V

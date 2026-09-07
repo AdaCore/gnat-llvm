@@ -366,47 +366,49 @@ package body GNATLLVM.Wrapper is
    ---------------------------
 
    function LLVM_Optimize_Module
-     (Module                   : Module_T;
-      Target_Machine           : Target_Machine_T;
-      Code_Opt_Level           : Nat;
-      Size_Opt_Level           : Nat;
-      Need_Loop_Info           : Boolean;
-      Unroll_Loops             : Boolean;
-      Loop_Vectorization       : Boolean;
-      SLP_Vectorization        : Boolean;
-      Merge_Functions          : Boolean;
-      Prepare_For_Thin_LTO     : Boolean;
-      Prepare_For_LTO          : Boolean;
-      Reroll_Loops             : Boolean;
-      Enable_Fuzzer            : Boolean;
-      Enable_Address_Sanitizer : Boolean;
-      San_Cov_Allow_List       : String_Access;
-      San_Cov_Ignore_List      : String_Access;
-      Pass_Plugin_Names        : System.Address;
-      Error_Message            : System.Address) return Boolean
+     (Module                      : Module_T;
+      Target_Machine              : Target_Machine_T;
+      Code_Opt_Level              : Nat;
+      Size_Opt_Level              : Nat;
+      Need_Loop_Info              : Boolean;
+      Unroll_Loops                : Boolean;
+      Loop_Vectorization          : Boolean;
+      SLP_Vectorization           : Boolean;
+      Merge_Functions             : Boolean;
+      Prepare_For_Thin_LTO        : Boolean;
+      Prepare_For_LTO             : Boolean;
+      Reroll_Loops                : Boolean;
+      Enable_Fuzzer               : Boolean;
+      Enable_Address_Sanitizer    : Boolean;
+      Enable_HW_Address_Sanitizer : Boolean;
+      San_Cov_Allow_List          : String_Access;
+      San_Cov_Ignore_List         : String_Access;
+      Pass_Plugin_Names           : System.Address;
+      Error_Message               : System.Address) return Boolean
    is
       function Maybe_To_C (S : String_Access) return chars_ptr
       is (if S = null then Null_Ptr else New_String (S.all));
 
       function LLVM_Optimize_Module_C
-        (Module                   : Module_T;
-         Target_Machine           : Target_Machine_T;
-         Code_Opt_Level           : Nat;
-         Size_Opt_Level           : Nat;
-         Need_Loop_Info           : LLVM_Bool;
-         Unroll_Loops             : LLVM_Bool;
-         Loop_Vectorization       : LLVM_Bool;
-         SLP_Vectorization        : LLVM_Bool;
-         Merge_Functions          : LLVM_Bool;
-         Prepare_For_Thin_LTO     : LLVM_Bool;
-         PrepareFor_LTO           : LLVM_Bool;
-         Reroll_Loops             : LLVM_Bool;
-         Enable_Fuzzer            : LLVM_Bool;
-         Enable_Address_Sanitizer : LLVM_Bool;
-         San_Cov_Allow_List       : chars_ptr;
-         San_Cov_Ignore_List      : chars_ptr;
-         Pass_Plugin_Names        : System.Address;
-         Error_Message            : System.Address) return LLVM_Bool
+        (Module                      : Module_T;
+         Target_Machine              : Target_Machine_T;
+         Code_Opt_Level              : Nat;
+         Size_Opt_Level              : Nat;
+         Need_Loop_Info              : LLVM_Bool;
+         Unroll_Loops                : LLVM_Bool;
+         Loop_Vectorization          : LLVM_Bool;
+         SLP_Vectorization           : LLVM_Bool;
+         Merge_Functions             : LLVM_Bool;
+         Prepare_For_Thin_LTO        : LLVM_Bool;
+         PrepareFor_LTO              : LLVM_Bool;
+         Reroll_Loops                : LLVM_Bool;
+         Enable_Fuzzer               : LLVM_Bool;
+         Enable_Address_Sanitizer    : LLVM_Bool;
+         Enable_HW_Address_Sanitizer : LLVM_Bool;
+         San_Cov_Allow_List          : chars_ptr;
+         San_Cov_Ignore_List         : chars_ptr;
+         Pass_Plugin_Names           : System.Address;
+         Error_Message               : System.Address) return LLVM_Bool
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       Need_Loop_Info_B : constant LLVM_Bool := Boolean'Pos (Need_Loop_Info);
       Unroll_B         : constant LLVM_Bool := Boolean'Pos (Unroll_Loops);
@@ -421,6 +423,8 @@ package body GNATLLVM.Wrapper is
       Fuzzer_B         : constant LLVM_Bool := Boolean'Pos (Enable_Fuzzer);
       ASan_B           : constant LLVM_Bool :=
         Boolean'Pos (Enable_Address_Sanitizer);
+      Hw_Asan_B        : constant LLVM_Bool :=
+        Boolean'Pos (Enable_HW_Address_Sanitizer);
       Allow_List_Ptr   : chars_ptr          :=
         Maybe_To_C (San_Cov_Allow_List);
       Ignore_List_Ptr  : chars_ptr          :=
@@ -432,7 +436,7 @@ package body GNATLLVM.Wrapper is
         LLVM_Optimize_Module_C
           (Module, Target_Machine, Code_Opt_Level, Size_Opt_Level,
            Need_Loop_Info_B, Unroll_B, Loop_Vect_B, SLP_Vect_B,
-           Merge_B, Thin_LTO_B, LTO_B, Reroll_B, Fuzzer_B, ASan_B,
+           Merge_B, Thin_LTO_B, LTO_B, Reroll_B, Fuzzer_B, ASan_B, Hw_Asan_B,
            Allow_List_Ptr, Ignore_List_Ptr, Pass_Plugin_Names, Error_Message);
       Free (Allow_List_Ptr);
       Free (Ignore_List_Ptr);
@@ -704,6 +708,18 @@ package body GNATLLVM.Wrapper is
    begin
       return Has_Call_Graph_Section_C (Triple & ASCII.NUL) /= 0;
    end Has_Call_Graph_Section;
+
+   ------------------------------
+   -- Has_HW_Address_Sanitizer --
+   ------------------------------
+
+   function Has_HW_Address_Sanitizer (Triple : String) return Boolean is
+      function Has_HW_Address_Sanitizer_C (Triple : String) return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "Has_HW_Address_Sanitizer";
+   begin
+      return Has_HW_Address_Sanitizer_C (Triple & ASCII.NUL) /= 0;
+   end Has_HW_Address_Sanitizer;
 
    --------------------------
    -- Needs_Frame_Pointers --

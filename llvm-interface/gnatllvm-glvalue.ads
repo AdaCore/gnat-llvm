@@ -382,10 +382,6 @@ package GNATLLVM.GLValue is
       --  if a scalar type). If TBAA_Type isn't Present, this value is
       --  undefined.
 
-      Unknown_MD           : MD_Type;
-      --  If Relationship is Reference_To_Unknown, this gives the
-      --  MD_Type of the object being referenced.
-
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -432,8 +428,7 @@ package GNATLLVM.GLValue is
       Aliases_All  => False,
       SM_Object    => Empty,
       TBAA_Type    => No_Metadata_T,
-      TBAA_Offset  => 0,
-      Unknown_MD   => No_MD_Type);
+      TBAA_Offset  => 0);
 
    function Present (V : GL_Value) return Boolean      is (Present (V.Value));
    function No      (V : GL_Value) return Boolean      is (No      (V.Value));
@@ -495,9 +490,6 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function TBAA_Offset  (V : GL_Value)  return ULL        is (V.TBAA_Offset)
-     with Pre => Present (V);
-
-   function Unknown_MD   (V : GL_Value)  return MD_Type    is (V.Unknown_MD)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -568,16 +560,22 @@ package GNATLLVM.GLValue is
       with Pre => Present (V);
 
    function Type_For_Relationship
-     (GT : GL_Type; R : GL_Relationship) return MD_Type
+     (GT         : GL_Type;
+      R          : GL_Relationship;
+      Unknown_MD : MD_Type := No_MD_Type) return MD_Type
      with Post => Present (Type_For_Relationship'Result);
    function Type_For_Relationship
-     (V : GL_Value; R : GL_Relationship) return MD_Type
+     (V          : GL_Value;
+      R          : GL_Relationship;
+      Unknown_MD : MD_Type := No_MD_Type) return MD_Type
    is
-     (Type_For_Relationship (Related_Type (V), R))
+     (Type_For_Relationship (Related_Type (V), R, Unknown_MD))
      with Pre => Present (V), Post => Present (Type_For_Relationship'Result);
    --  Return the MD_Type corresponding to a value of relationship R to GT.
    --  If this is a kind of relationship where we don't need a GT, it may
-   --  be omitted. This applies to subprogram types.
+   --  be omitted. This applies to subprogram types. Unknown_MD, if specified,
+   --  is the MD_Type to be used when R is Unknown and is passed down if
+   --  R is Reference_To_Unknown.
 
    --  Constructors for a GL_Value
 
@@ -594,8 +592,7 @@ package GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0;
-      Unknown_MD  : MD_Type           := No_MD_Type) return GL_Value
+      TBAA_Offset : ULL               := 0) return GL_Value
      with Pre => Present (V) and then Present (GT), Inline;
    --  Raw constructor that allows full specification of all fields
 
@@ -614,11 +611,20 @@ package GNATLLVM.GLValue is
          Aliases_All => Aliases_All (GV),
          SM_Object   => SM_Object   (GV),
          TBAA_Type   => TBAA_Type   (GV),
-         TBAA_Offset => TBAA_Offset (GV),
-         Unknown_MD  => Unknown_MD (GV)))
+         TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
    --  Likewise, but copy all but types and relationship from an existing value
+
+   function GM_TBAA
+     (V  : GL_Value;
+      GT : GL_Type;
+      MD : MD_Type;
+      R  : GL_Relationship := Data;
+      GV : GL_Value) return GL_Value
+     with Pre  => Present (V) and then Present (GT) and then Present (GV),
+     Post => Present (GM_TBAA'Result);
+   --  Likewise, but update TBAA if it would have changed
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
      (GM (V, Related_Type (GV), Type_Of (GV), Relationship (GV), GV))
@@ -632,57 +638,61 @@ package GNATLLVM.GLValue is
           Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
-   --  Constructor for case where we want to show that V has a different type
-
-   function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Type_For_Relationship (GT, Ref (Relationship (V))),
-          Ref (Relationship (V)), V))
-     with Pre  => Present (V) and then Present (GT),
-          Post => Present (G_Is_Ref'Result);
-   --  Constructor for case where we want to show that V has a different type
-
+   function G_Is (V : GL_Value; MD : MD_Type) return GL_Value is
+     (GM (+V, Related_Type (V), MD, Relationship (V), V))
+     with Pre  => Present (V) and then Present (MD),
+          Post => Present (G_Is'Result);
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
      (GM (+V, Related_Type (T),
           Type_For_Relationship (Related_Type (T), Relationship (V)),
           Relationship (V), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
+   --  Constructors for cases where we want to show that V has a different type
+
+   function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (G_Is_Ref'Result);
+   --  Constructor for case where we want to show that V has a different type
 
    function G_Is_Relationship
-     (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
+     (V          : GL_Value;
+      GT         : GL_Type;
+      R          : GL_Relationship;
+      Unknown_MD : MD_Type := No_MD_Type) return GL_Value
    is
-     (GM (+V, GT, Type_For_Relationship (GT, R), R, V))
+     (GM_TBAA (V, GT, Type_For_Relationship (GT, R, Unknown_MD), R, V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
-   --  Constructor for case where we want to show that V has a different type
-   --  and relationship.
-
    function G_Is_Relationship
-     (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
+     (V          : GL_Value;
+      T          : GL_Value;
+      R          : GL_Relationship;
+      Unknown_MD : MD_Type := No_MD_Type) return GL_Value
    is
-     (GM (+V, Related_Type (T), Type_For_Relationship (Related_Type (T), R),
-          R, V))
+     (GM_TBAA (V, Related_Type (T),
+               Type_For_Relationship (Related_Type (T), R, Unknown_MD),
+               R, V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
-   --  Constructor for case where we want to show that V has a different type
-   --  and relationship.
-
+   function G_Is_Relationship
+     (V          : GL_Value;
+      T          : GL_Value;
+      Unknown_MD : MD_Type := No_MD_Type) return GL_Value is
+     (GM_TBAA (V, Related_Type (T),
+               Type_For_Relationship (Related_Type (T), Relationship (T),
+                                      Unknown_MD),
+               Relationship (T), V))
+   with Pre  => Present (V) and then Present (T),
+          Post => Present (G_Is_Relationship'Result);
    function G_Is_Relationship
      (V : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, Related_Type (V), Type_Of (V), R, V))
+     (GM_TBAA (V, Related_Type (V), Type_Of (V), R, V))
      with Pre => Present (V), Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a
-   --  different relationship.
-
-   function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-     (GM (+V, Related_Type (T),
-          Type_For_Relationship (Related_Type (T), Relationship (T)),
-          Relationship (T), V))
-     with Pre  => Present (V) and then Present (T),
-          Post => Present (G_Is_Relationship'Result);
-   --  Constructor for case where we want to show that V has a different type
-   --  and relationship.
+   --  different type and relationship. Unknown_MD, if specified, is
+   --  the type for Unknown when R is Reference_To_Unknown.
 
    function G_Ref
      (V           : Value_T;
@@ -696,8 +706,7 @@ package GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0;
-      Unknown_MD  : MD_Type           := No_MD_Type) return GL_Value
+      TBAA_Offset : ULL               := 0) return GL_Value
    is
      (G (V, GT, MD, Relationship_For_Ref (GT),
          Alignment   => Alignment,
@@ -708,8 +717,7 @@ package GNATLLVM.GLValue is
          Aliases_All => Aliases_All,
          SM_Object   => SM_Object,
          TBAA_Type   => TBAA_Type,
-         TBAA_Offset => TBAA_Offset,
-         Unknown_MD  => Unknown_MD))
+         TBAA_Offset => TBAA_Offset))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
@@ -727,8 +735,7 @@ package GNATLLVM.GLValue is
              Aliases_All => Aliases_All (GV),
              SM_Object   => SM_Object   (GV),
              TBAA_Type   => TBAA_Type   (GV),
-             TBAA_Offset => TBAA_Offset (GV),
-             Unknown_MD  => Unknown_MD (GV)))
+             TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
@@ -799,9 +806,6 @@ package GNATLLVM.GLValue is
 
    procedure Set_Aliases_All (V : in out GL_Value; AA : Boolean := True)
      with Pre => Present (V), Post => not AA or else Aliases_All (V), Inline;
-
-   procedure Set_Unknown_MD (V : in out GL_Value; MD : MD_Type)
-     with Pre => Present (V), Post => Unknown_MD (V) = MD, Inline;
 
    procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
      with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;

@@ -455,9 +455,7 @@ package body GNATLLVM.Blocks is
                                  (Subps.Table
                                     (Subp_Index (Current_Subp)).ARECnP))
             then
-               End_Parameter :=
-                 Pointer_Cast (Get_Static_Link (End_Subp),
-                               Full_GL_Type (Extra_Formals (End_Subp)));
+               End_Parameter := Get_Static_Link (End_Subp);
             end if;
          end if;
       end if;
@@ -500,9 +498,7 @@ package body GNATLLVM.Blocks is
         and then Present (BI.At_End_Subp) and then No (BI.At_End_Parameter)
         and then Has_Activation_Record (BI.At_End_Subp)
       then
-         BI.At_End_Parameter :=
-           Pointer_Cast (Get_Static_Link (BI.At_End_Subp),
-                         Full_GL_Type (Extra_Formals (BI.At_End_Subp)));
+         BI.At_End_Parameter := Get_Static_Link (BI.At_End_Subp);
       end if;
    end Maybe_Update_At_End;
 

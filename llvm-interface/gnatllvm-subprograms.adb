@@ -925,9 +925,7 @@ package body GNATLLVM.Subprograms is
       --  being sure it's in the same type that we need.
 
       if Present (Func) then
-         return GM (Pointer_Cast (IR_Builder, +Func,
-                                  +Pointer_Type (Subp_Type), S),
-                    GT, Pointer_Type (Subp_Type), Relationship (Func),
+         return GM (+Func, GT, Pointer_Type (Subp_Type), Relationship (Func),
                     Func);
       else
          Func := Add_Function (S, Subp_Type, GT, Is_Builtin => True);
@@ -960,14 +958,13 @@ package body GNATLLVM.Subprograms is
       Tramp  : constant GL_Value :=
         Array_Alloca (SSI_GL_Type, Size_Const_Int (ULL (72)),
                       Name => "TRAMP");
-      Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, A_Char_GL_Type);
 
    begin
       --  We have to initialize the trampoline and then adjust it and return
       --  that result.
 
       Check_Implicit_Dynamic_Code_Allowed (N);
-      Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
+      Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Fn, 3 => Static_Link));
 
       if Enable_Execute_Stack then
          Call (Get_Enable_Execute_Stack_Fn, (1 => Tramp));
@@ -1242,9 +1239,9 @@ package body GNATLLVM.Subprograms is
                      E    => Param,
                      Name => Name.all);
 
-                  Val := Ptr_To_Relationship (LLVM_Param, Pointer_Type (MD),
-                                              Reference_To_Unknown);
-                  Set_Unknown_MD (Val, MD);
+                  Val := G_Is_Relationship (LLVM_Param, GT,
+                                            Reference_To_Unknown,
+                                            Unknown_MD => MD);
                   Store (V, Val);
                   C_Set_Entity  (LLVM_Param, Param);
                end;
@@ -1277,7 +1274,7 @@ package body GNATLLVM.Subprograms is
             --  fat pointer.
 
             elsif PK = Foreign_By_Component_Ref then
-               LLVM_Param := Ptr_To_Ref (V, GT);
+               LLVM_Param := G_Is_Ref (V, GT);
 
                if not Is_Constrained (GT) then
                   declare
@@ -1943,7 +1940,7 @@ package body GNATLLVM.Subprograms is
             end loop;
          end if;
 
-         return Pointer_Cast (Result, A_Char_GL_Type, "static.link");
+         return G_Is (Result, A_Char_GL_Type);
       else
          return Get_Undef (A_Char_GL_Type);
       end if;
@@ -1967,8 +1964,7 @@ package body GNATLLVM.Subprograms is
       if Present (Proc) and then Has_Activation_Record (Proc)
         and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
       then
-         S_Link := Pointer_Cast (Get_Static_Link (Proc),
-                                 Full_GL_Type (Extra_Formals (Proc)));
+         S_Link := Get_Static_Link (Proc);
       elsif Force_Activation_Record_Parameter then
          S_Link := Get_Undef (A_Char_GL_Type);
       end if;
@@ -2123,9 +2119,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             V := Emit_Entity (Alias (E));
-            return (if   Type_Of (V) /= MD
-                    then Ptr_To_Relationship (V, MD, Reference_To_Subprogram)
-                    else V);
+            return (if   Type_Of (V) /= MD then G_Is (V, MD) else V);
          end;
       end if;
 
@@ -2172,7 +2166,7 @@ package body GNATLLVM.Subprograms is
                        (Insert_Value (Get_Undef_Relationship
                                         (DT, Fat_Reference_To_Subprogram),
                                       S_Link, 1),
-                        Pointer_Cast (V, A_Char_GL_Type), 0);
+                        V, 0);
                   end if;
                end;
             elsif Attr = Attribute_Address then
@@ -2589,9 +2583,9 @@ package body GNATLLVM.Subprograms is
                      --  Now convert to a pointer to the proper type
 
                      Arg := (if    PK = Foreign_By_Ref
-                             then  Ptr_To_Relationship (Get (Arg, R), GT, R)
+                             then  G_Is_Relationship (Get (Arg, R), GT, R)
                              elsif PK = Foreign_By_Component_Ref
-                             then  Ptr_To_Relationship
+                             then  G_Is_Relationship
                                (Get (Arg, R),
                                 Full_Component_GL_Type (GT), R)
                              else  Get (Convert_Ref (Arg, GT), R));
@@ -2613,10 +2607,9 @@ package body GNATLLVM.Subprograms is
 
                      begin
                         Arg := Get (Arg, Reference);
-                        Arg := Ptr_To_Relationship (Get (Arg, Reference),
-                                                    Pointer_Type (MD),
-                                                    Reference_To_Unknown);
-                        Set_Unknown_MD (Arg, MD);
+                        Arg := G_Is_Relationship (Get (Arg, Reference), GT,
+                                                  Reference_To_Unknown,
+                                                  Unknown_MD => MD);
                         Arg := Load (Arg);
                      end;
                   else
@@ -2904,10 +2897,8 @@ package body GNATLLVM.Subprograms is
       --  have the same type. Convert it to it if not.
 
       if Present (LLVM_Func) and then Type_Of (LLVM_Func) /= Subp_P_Type then
-         LLVM_Func :=
-           GM (Pointer_Cast (IR_Builder, +LLVM_Func, +Subp_P_Type, Subp_Name),
-               Return_GT, Subp_P_Type, Relationship (LLVM_Func),
-               LLVM_Func);
+         LLVM_Func := GM (+LLVM_Func, Return_GT, Subp_P_Type,
+                          Relationship (LLVM_Func), LLVM_Func);
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name, Subp_Type, Full_GL_Type (E));
 

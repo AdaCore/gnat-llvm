@@ -1060,7 +1060,8 @@ package body GNATLLVM.GLType is
       --  is the wider type. Get a pointer to it in the narrower type and
       --  copy V to it. The result is the memory.
 
-      Emit_Assignment (Ptr_To_Relationship (Memory, V, Relationship (V)),
+      Emit_Assignment (G_Is_Relationship (Memory, Related_Type (V),
+                                          Relationship (V)),
                        Value => V);
       return Memory;
 
@@ -1151,7 +1152,7 @@ package body GNATLLVM.GLType is
          --  Otherwise, convert the pointer
 
          else
-            return Ptr_To_Relationship (Result, Out_GT, Relationship (Result));
+            return G_Is_Relationship (Result, Out_GT, Relationship (Result));
          end if;
       end if;
 
@@ -1239,7 +1240,7 @@ package body GNATLLVM.GLType is
          --  Otherwise, convert the pointer
 
          else
-            return Ptr_To_Relationship (Result, GT, Relationship (Result));
+            return G_Is_Relationship (Result, GT, Relationship (Result));
          end if;
       end if;
 

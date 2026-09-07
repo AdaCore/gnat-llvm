@@ -550,10 +550,9 @@ package body GNATLLVM.Conversions is
                  Int_Ty (Get_Type_Size (Data_Type_Of (Result)));
 
             begin
-               Result := Ptr_To_Relationship
-                 (Get (Result, Any_Reference), Pointer_Type (MD),
-                  Reference_To_Unknown);
-               Set_Unknown_MD (Result, MD);
+               Result := G_Is_Relationship (Get (Result, Any_Reference),
+                                            GT, Reference_To_Unknown,
+                                            Unknown_MD => MD);
                Result := Load (Result);
                Result := GM (+Result, GT, MD, GV => Result);
                if Is_Unsigned_Type (GT) then
@@ -834,7 +833,7 @@ package body GNATLLVM.Conversions is
       if In_R = Reference_To_Subprogram
         and then Ekind (GT) = E_Access_Subprogram_Type
       then
-         Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
+         Result := Get (G_Is_Relationship (As_Ref, DT, Reference), R);
 
       --  If we have an unchecked conversion to a fat pointer, we can have
       --  all sorts of weird stuff as input. In that case, we want to do
@@ -852,7 +851,7 @@ package body GNATLLVM.Conversions is
          Result := Get_Undef_Relationship (DT, R);
 
          if Is_Pointer (As_Ref) then
-            Result := Insert_Value (Result, Ptr_To_Ref (As_Ref, DT), 0);
+            Result := Insert_Value (Result, G_Is_Ref (As_Ref, DT), 0);
          elsif Is_Integer_Type (As_Ref)
            and then Get_Scalar_Size (As_Ref) = Thin_Pointer_Size
          then
@@ -878,7 +877,7 @@ package body GNATLLVM.Conversions is
 
          --  And then set it as a thin pointer
 
-         Result := Ptr_To_Relationship (Result, DT, Thin_Pointer);
+         Result := G_Is_Relationship (Result, DT, Thin_Pointer);
 
       --  Otherwise, get the input in the desired relationship and then
       --  convert the pointer.
@@ -986,7 +985,7 @@ package body GNATLLVM.Conversions is
       --  it to an actual subprogram access type.
 
       if Is_Subprogram_Reference (V) then
-         return Ptr_To_Relationship (V, GT, Reference);
+         return G_Is_Ref (V, GT);
 
       --  If the types are the same, we're done except that we know
       --  nothing about Reference_To_Unknown
@@ -1024,14 +1023,14 @@ package body GNATLLVM.Conversions is
                  Get_Undef_Relationship (GT, Fat_Pointer);
                Bounds : constant GL_Value := Get_Array_Bounds (GT, V_GT, In_V);
                Data   : constant GL_Value :=
-                 Ptr_To_Relationship (Get (In_V, Reference), GT, Reference);
+                 G_Is_Relationship (Get (In_V, Reference), GT, Reference);
 
             begin
                return Insert_Value (Insert_Value (New_FP, Data, 0),
                                     Get (Bounds, Reference_To_Bounds), 1);
             end;
          else
-            return Ptr_To_Ref (Get (In_V, Reference), GT);
+            return G_Is_Ref (Get (In_V, Reference), GT);
          end if;
 
       --  At this point, we know that the result isn't an unconstrained
@@ -1039,7 +1038,7 @@ package body GNATLLVM.Conversions is
       --  to a reference.
 
       else
-         return Ptr_To_Ref (Remove_Padding (V), GT);
+         return G_Is_Ref (Remove_Padding (V), GT);
       end if;
    end Convert_Ref;
 
@@ -1053,15 +1052,10 @@ package body GNATLLVM.Conversions is
       Value : Value_T;
 
    begin
-      --  ??? Fixme later
-      if Type_Of (V) = MD then
-         return G_Is_Relationship (V, GT, R);
+      --  If the input is an actual pointer, return it.
 
-      --  If the input is an actual pointer, convert it
-
-      elsif Is_Pointer (MD) then
-         return GM (Pointer_Cast (IR_Builder, +V, +MD, ""),
-                    GT, MD, R, V);
+      if Is_Pointer (MD) then
+         return G_Is (V, GT);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new

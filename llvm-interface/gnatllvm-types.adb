@@ -558,7 +558,7 @@ package body GNATLLVM.Types is
       Mem_GT   : constant GL_Type          := GT_To_Use (GT, Alloc_GT);
       Memory   : GL_Value                  :=
         (if   Is_Pointer (Temp)
-         then Remove_Padding (Ptr_To_Relationship (Temp, Mem_GT, R))
+         then Remove_Padding (G_Is_Relationship (Temp, Mem_GT, R))
          else Remove_Padding (Int_To_Relationship (Temp, Mem_GT, R)));
       New_V    : GL_Value                 :=
         (if    Present (V) then V
@@ -588,7 +588,7 @@ package body GNATLLVM.Types is
             end if;
 
             New_V  := Get (New_V, Bounds_And_Data);
-            Memory := Ptr_To_Relationship (Memory, New_V, R);
+            Memory := G_Is_Relationship (Memory, Related_Type (New_V), R);
          else
             if not Is_Constrained (GT) or else No (New_V)
               or else New_V = Memory
@@ -926,8 +926,8 @@ package body GNATLLVM.Types is
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Result :=
            Call_Alloc (Proc, N,
-                       (1 => Ptr_To_Ref (Emit_Entity (Pool),
-                                         Full_GL_Type (First_Formal (Proc))),
+                       (1 => G_Is_Ref (Emit_Entity (Pool),
+                                       Full_GL_Type (First_Formal (Proc))),
                         2 => Size,
                         3 => To_Bytes (Align_V)));
 
@@ -1041,9 +1041,8 @@ package body GNATLLVM.Types is
 
          elsif Is_Record_Type (Full_Etype (Pool)) then
             Call_Dealloc (Proc,
-                          (1 => Ptr_To_Ref (Emit_Entity (Pool),
-                                            Full_GL_Type
-                                              (First_Formal (Proc))),
+                          (1 => G_Is_Ref (Emit_Entity (Pool),
+                                          Full_GL_Type (First_Formal (Proc))),
                            2 => Ptr_To_Address_Type (Free_V),
                            3 => Size,
                            4 => To_Bytes (Align_V)));

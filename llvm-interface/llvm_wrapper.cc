@@ -570,11 +570,9 @@ extern "C" ClangTargetInfo *Get_Target_Info(const char *TargetTriple,
 
   // Finally, we can create the TargetInfo structure.
 #if LLVM_VERSION_MAJOR < 21
-  Result->Info =
-      TargetInfo::CreateTargetInfo(*Result->Diags, Result->Options);
+  Result->Info = TargetInfo::CreateTargetInfo(*Result->Diags, Result->Options);
 #else
-  Result->Info =
-      TargetInfo::CreateTargetInfo(*Result->Diags, *Result->Options);
+  Result->Info = TargetInfo::CreateTargetInfo(*Result->Diags, *Result->Options);
 #endif
 
   if (Result->Info == nullptr)
@@ -685,8 +683,7 @@ LLVM_Optimize_Module(Module *M, TargetMachine *TM, int CodeOptLevel,
                      bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
                      bool EnableAddressSanitizer, bool EnableHWAddressSanitizer,
                      const char *SanCovAllowList, const char *SanCovIgnoreList,
-                     const char **PassPluginNames,
-                     char **ErrorMessage) {
+                     const char **PassPluginNames, char **ErrorMessage) {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
   std::optional<PGOOptions> PGOOpt;
@@ -1176,6 +1173,28 @@ extern "C" const char *Get_Personality_Function_Name(const char *Target) {
     return "__gnat_personality_v0";
 }
 
+// Add the features to the extension set.
+static void ProcessAArch64Features(StringRef Features,
+                                   AArch64::ExtensionSet &Extensions) {
+  if (Features.empty())
+    return;
+
+  SmallVector<StringRef, 8> FeatureSplit;
+  Features.split(FeatureSplit, "+", /*MaxSplit=*/-1,
+                 /*KeepEmpty=*/false);
+
+  for (auto const Feature : FeatureSplit) {
+    if (Feature == "neon" || Feature == "noneon") {
+      errs() << "warning: [no]neon is not accepted as modifier, please use "
+                "[no]simd instead\n";
+      continue;
+    }
+
+    if (!Extensions.parseModifier(Feature))
+      errs() << "warning: ignoring unsupported feature " << Feature << "\n";
+  }
+}
+
 static StringRef getRISCVArch(const Triple &T, StringRef Arch, StringRef CPU,
                               StringRef ABI) {
   // Inspired by riscv::getRISCVArch in
@@ -1222,53 +1241,64 @@ extern "C" char *Get_Features(const char *TargetTriple, const char *Arch,
     return nullptr;
 
   case Triple::aarch64: {
-    // Here we replicate relevant parts of Clang's aarch64::getAArch64Features
-    // (see clang/lib/Driver/ToolChains/Arch/AArch64.cpp).
+    // Here we replicate relevant parts of Clang's
+    // aarch64::getAArch64TargetFeatures (see
+    // clang/lib/Driver/ToolChains/Arch/AArch64.cpp).
 
+    StringRef TargetCPU = CPU;
+
+    AArch64::ExtensionSet Extensions;
     std::vector<StringRef> Features;
-
-    // Clang enables NEON by default, so we do the same.
-    Features.push_back("+neon");
+    StringRef ArchFeatures, CPUFeatures;
 
     auto ArchLowerCase = StringRef(Arch).lower();
-    if (ArchLowerCase.empty()) {
+    if (ArchLowerCase.empty() && TargetCPU == "generic") {
       // Clang defaults to ARMv8-A if the user hasn't specified a CPU either,
       // so let's do the same.
-      if (StringRef(CPU) == "generic")
-        ArchLowerCase = "armv8-a";
-      else
-        // ??? Clang can also derive the list of features from -mcpu (which only
-        // happens if -march isn't specified); we may want to do the same here.
+      ArchLowerCase = "armv8-a";
+    }
+
+    if (ArchLowerCase.size()) {
+      // The -march option value has the format
+      // "architecture+feature1+feature2", so first split the architecture from
+      // the list of features.
+      auto const ArchSplit = StringRef(ArchLowerCase).split("+");
+      auto const ArchInfo = AArch64::parseArch(ArchSplit.first);
+
+      if (ArchInfo == nullptr) {
+        errs() << "warning: ignoring unsupported -march value " << Arch << "\n";
         return nullptr;
-    }
-
-    // The -march option value has the format
-    // "architecture+feature1+feature2", so first split the architecture from
-    // the list of features.
-    auto const ArchSplit = StringRef(ArchLowerCase).split("+");
-    auto const ArchInfo = AArch64::parseArch(ArchSplit.first);
-
-    if (ArchInfo == nullptr) {
-      errs() << "warning: ignoring unsupported -march value " << Arch << "\n";
-      return nullptr;
-    }
-
-    Features.push_back(ArchInfo->ArchFeature);
-
-    // Now process the user-specified additional features, if any.
-    if (!ArchSplit.second.empty()) {
-      SmallVector<StringRef, 8> FeatureSplit;
-      ArchSplit.second.split(FeatureSplit, "+", /*MaxSplit=*/-1,
-                             /*KeepEmpty=*/false);
-
-      for (auto const Feature : FeatureSplit) {
-        auto const FeatureName = AArch64::getArchExtFeature(Feature);
-        if (!FeatureName.empty())
-          Features.push_back(FeatureName);
-        else
-          errs() << "warning: ignoring unsupported feature " << Feature << "\n";
       }
+
+      Extensions.addArchDefaults(*ArchInfo);
+      ProcessAArch64Features(ArchSplit.second, Extensions);
     }
+
+    // The -mcpu option value has the format "cpu+feature1+feature2", so
+    // first split the CPU from the list of features.
+    auto const CPUSplit = TargetCPU.split("+");
+
+    // Only derive features from the CPU if we don't have an arch (default or
+    // user-specified).
+    if (ArchLowerCase.empty()) {
+      auto const CPUInfo = AArch64::parseCpu(CPUSplit.first);
+
+      if (!CPUInfo) {
+        errs() << "warning: ignoring unsupported -mcpu value " << TargetCPU
+               << "\n";
+        return nullptr;
+      }
+
+      Extensions.addCPUDefaults(*CPUInfo);
+    }
+
+    // Always process features appended to the CPU, if any.
+    ProcessAArch64Features(CPUSplit.second, Extensions);
+
+    // ??? In Clang, -mgeneral-regs-only disables all floating-point features
+    // via Extensions.disable(AArch64::AEK_FP).
+
+    Extensions.toLLVMFeatureList(Features);
 
     // ??? There is a lot more in Clang's AArch64 feature lookup code that we
     // may want to copy.
@@ -1335,6 +1365,26 @@ extern "C" const char *Get_Target_Default_CPU(const char *TargetTriple) {
     return "x86-64";
   case Triple::x86:
     return "pentium4";
+  }
+}
+
+extern "C" const char *Get_Normalized_CPU_Name(const char *TargetTriple,
+                                               const char *CPU) {
+  // This function is modeled after tools::getCPUName in
+  // clang/lib/Driver/ToolChains/CommonArgs.cpp.
+
+  Triple T(TargetTriple);
+
+  switch (T.getArch()) {
+  default:
+    return nullptr;
+  case Triple::aarch64: {
+    // Strip features appended to the CPU name, then resolve aliases.
+    return strdup(
+        AArch64::resolveCPUAlias(StringRef(CPU).split("+").first.lower())
+            .str()
+            .c_str());
+  }
   }
 }
 
@@ -1503,9 +1553,8 @@ extern "C" void Set_Indirect_Call_Location(LLVMValueRef CallRef,
   if (!CB || !CB->isIndirectCall())
     return;
   LLVMContext &Ctx = CB->getContext();
-  std::string Loc =
-      std::string(File ? File : "") + ":" + std::to_string(Line) + ":" +
-      std::to_string(Col);
+  std::string Loc = std::string(File ? File : "") + ":" + std::to_string(Line) +
+                    ":" + std::to_string(Col);
   CB->setMetadata(CG_Loc_Kind, MDNode::get(Ctx, MDString::get(Ctx, Loc)));
 }
 
@@ -1586,7 +1635,7 @@ extern "C" void Append_Section_Data(LLVMModuleRef ModRef, const char *Section,
   unsigned Count = 0;
   for (const char *P = Text; *P != '\0'; ++P) {
     Asm += (Count % 16 == 0 ? "\t.byte\t" : ",");
-    Asm += utostr((unsigned char) *P);
+    Asm += utostr((unsigned char)*P);
 
     if (++Count % 16 == 0)
       Asm += "\n";

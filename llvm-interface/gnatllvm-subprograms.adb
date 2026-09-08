@@ -1488,9 +1488,7 @@ package body GNATLLVM.Subprograms is
 
    procedure Add_Common_Function_Attributes (Func : GL_Value) is
    begin
-      if CPU.all /= "generic" then
-         Add_Named_Attribute (Func, "target-cpu", CPU.all);
-      end if;
+      Add_Named_Attribute (Func, "target-cpu", CPU.all);
 
       if Features.all /= "" then
          Add_Named_Attribute (Func, "target-features", Features.all);

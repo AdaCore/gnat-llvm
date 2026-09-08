@@ -528,6 +528,9 @@ package GNATLLVM.Wrapper is
 
    function Get_Target_Default_CPU (Triple : String) return String;
 
+   function Get_Normalized_CPU_Name
+     (Triple, CPU : String) return String_Access;
+
    function Get_Target_Default_ABI (Triple, Arch, CPU : String) return String;
 
    function Get_Default_Address_Space

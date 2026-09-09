@@ -23,6 +23,8 @@
 /* This file contains the C routines or variables which are defined in
    some GCC source (and hence not available when compiling here). */
 
+#include <stdio.h>
+
 /* Originally defined in GCC's toplev.c. GNAT uses this flag to
    determine whether stack checking is enabled on the target (controls
    allocation strategy for large objects in certain cases). */
@@ -37,8 +39,18 @@ int gnat_encodings = 0;
 int optimize = 0;
 int optimize_size = 0;
 
-/* Originally defined in toplev.c, used in exp_cg.adb. */
-void *callgraph_info_file = (void *)0;
+/* Originally defined in toplev.c, used in exp_cg.adb. GCC's toplev opens
+   this FILE* before invoking gnat1, and Exp_CG.Generate_CG_Output writes the
+   dispatching-call edges and the tagged-type "class{}" declarations to it.
+   gnat-llvm has no toplev, so it opens the stream itself, calls
+   Generate_CG_Output from the back end and reads the text back, to put it
+   into an object section (see GNATLLVM.Codegen.Generate_Code). The two
+   routines that do so are gnatllvm_open_callgraph_info_file and
+   gnatllvm_take_callgraph_info_text in llvm_wrapper.cc.
+   The definition stays here because this is where GCC's
+   missing definitions belong, and because any tool whose closure reaches
+   exp_cg would need it. */
+FILE *callgraph_info_file = NULL;
 
 /* Originally defined in misc.c.  */
 unsigned int save_argc = 0;

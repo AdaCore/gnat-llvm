@@ -1191,9 +1191,7 @@ package body GNATLLVM.Arrays is
          Value := Emit_Convert_Value (E, SSI_GL_Type);
       end if;
 
-      Build_MemSet (Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
-                                       Reference),
-                                  A_Char_GL_Type),
+      Build_MemSet (Get (To_Primitive (LValue, No_Copy => True), Reference),
                     Value, Size, To_Bytes (Get_Type_Alignment (GT)),
                     Is_Volatile (LValue),
                     TBAA => Compute_TBAA_Access (LValue, No_GL_Value, Size));
@@ -1658,7 +1656,7 @@ package body GNATLLVM.Arrays is
       begin
          Result := GEP (Unit_GT, Data,
                         (1 => Compute_Index_Offset (Idxs, GT, Use_Comp, V)));
-         Result := Ptr_To_Ref (Result, Comp_GT);
+         Result := G_Is_Ref (Result, Comp_GT);
 
          --  Set the attributes of the result. However, the above will have
          --  set incorrect TBAA values, so clear them out first.
@@ -1714,10 +1712,9 @@ package body GNATLLVM.Arrays is
       --  the size.
 
       elsif not Is_Nonnative_Type (Arr_GT) then
-         Result := Ptr_To_Ref (GEP (GT, Array_Data,
-                                    (1 => Size_Const_Null, 2 => Index_Shift),
-                                    "arr.lvalue"),
-                               GT);
+         Result := G_Is_Ref (GEP (GT, Array_Data,
+                                  (1 => Size_Const_Null, 2 => Index_Shift)),
+                             GT);
          Adjust_Array_Component_Alignment (Result, V, Comp_GT);
          Initialize_TBAA (Result);
          return Result;
@@ -1729,7 +1726,7 @@ package body GNATLLVM.Arrays is
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
-           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
+           Get (G_Is_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (1)
             else Get_Type_Size_In_Bytes (Comp_GT, Max_Size => Comp_Unc));
@@ -1737,8 +1734,8 @@ package body GNATLLVM.Arrays is
            To_Size_Type (Index_Shift) * Unit_Mult;
 
       begin
-         Result := Ptr_To_Ref (GEP (Arr_GT, Data,
-                                    (1 => Index), "arr.lvalue"), GT);
+         Result := G_Is_Ref (GEP (Arr_GT, Data,
+                                  (1 => Index), "arr.lvalue"), GT);
          Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
          Initialize_TBAA (Result);
          return Result;

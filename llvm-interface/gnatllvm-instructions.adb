@@ -341,108 +341,20 @@ package body GNATLLVM.Instructions is
      (GM (Bit_Cast (IR_Builder, +V, +Type_Of (GT), Name), GT, Type_Of (GT),
           GV => V));
 
-   ------------------
-   -- Pointer_Cast --
-   ------------------
-
-   function Pointer_Cast
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-   is
-      MD     : constant MD_Type := Type_Of (GT);
-      Result : GL_Value         :=
-        GM (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, GV => V);
-
-   begin
-      Initialize_TBAA_If_Changed (Result, V);
-      return Result;
-   end Pointer_Cast;
-
-   ----------------
-   -- Ptr_To_Ref --
-   ----------------
-
-   function Ptr_To_Ref
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-   is
-      MD     : constant MD_Type := Pointer_Type (Type_Of (GT));
-      Result : GL_Value         :=
-        GM_Ref (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, V);
-
-   begin
-      Initialize_TBAA_If_Changed (Result, V);
-      return Result;
-   end Ptr_To_Ref;
-
    ----------------------
    -- Ptr_To_Array_Ref --
    ----------------------
 
-   function Ptr_To_Array_Ref
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   function Ptr_To_Array_Ref (V : GL_Value; GT : GL_Type) return GL_Value
    is
       MD     : constant MD_Type :=
         Pointer_Type (Variable_Array_Type (Type_Of (GT)));
-      Result : GL_Value         :=
-        GM_Ref (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, V);
+      Result : GL_Value         := GM_Ref (+V, GT, MD, V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Ptr_To_Array_Ref;
-
-   ----------------
-   -- Ptr_To_Ref --
-   ----------------
-
-   function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
-   is
-      MD     : constant MD_Type := Pointer_Type (Type_Of (T));
-      Result : GL_Value :=
-        GM_Ref (Pointer_Cast (IR_Builder, +V, +MD, Name),
-                Full_Designated_GL_Type (T), MD, V);
-
-   begin
-      Initialize_TBAA_If_Changed (Result, V);
-      return Result;
-   end Ptr_To_Ref;
-
-   -------------------------
-   -- Ptr_To_Relationship --
-   -------------------------
-
-   function Ptr_To_Relationship
-     (V    : GL_Value;
-      GT   : GL_Type;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-      MD     : constant MD_Type := Type_For_Relationship (GT, R);
-      Result : GL_Value         :=
-        GM (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, R, V);
-
-   begin
-      Initialize_TBAA_If_Changed (Result, V);
-      return Result;
-   end Ptr_To_Relationship;
-
-   -------------------------
-   -- Ptr_To_Relationship --
-   -------------------------
-
-   function Ptr_To_Relationship
-     (V, T : GL_Value;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-      MD     : constant MD_Type := Type_For_Relationship (T, R);
-      Result : GL_Value         :=
-        GM (Pointer_Cast (IR_Builder, +V, +MD, Name), Related_Type (T),
-            MD, R, V);
-
-   begin
-      Initialize_TBAA_If_Changed (Result, V);
-      return Result;
-   end Ptr_To_Relationship;
 
    ---------------------
    -- MD_From_Indices --
@@ -1541,14 +1453,7 @@ package body GNATLLVM.Instructions is
         (if Special_Atomic then Int_Ty (Result_Bits) else MD);
       --  Type that Ptr_Val will have
 
-      Equiv_MD       : constant MD_Type          :=
-        (if Special_Atomic then Pointer_Type (Ptr_MD) else No_MD_Type);
-      --  Pointer to integer type with size matching that of the type
-      --  to be loaded
-
-      Ptr_Val        : Value_T                 :=
-        (if   Special_Atomic
-         then Pointer_Cast (IR_Builder, +Ptr, +Equiv_MD, "") else +Ptr);
+      Ptr_Val        : Value_T                  := +Ptr;
       --  Address of item to load
 
       Load_Inst : Value_T;
@@ -1593,8 +1498,7 @@ package body GNATLLVM.Instructions is
          declare
             Memory     : constant GL_Value := Allocate_For_Type (Load_GT);
             Store_Inst : constant Value_T  :=
-              Build_Store (IR_Builder, Load_Inst,
-                           Pointer_Cast (IR_Builder, +Memory, +Equiv_MD, ""));
+              Build_Store (IR_Builder, Load_Inst, +Memory);
             Align      : constant unsigned :=
               unsigned (To_Bytes (Alignment (Ptr)));
 
@@ -1627,11 +1531,6 @@ package body GNATLLVM.Instructions is
           and then ULL (Nat'(Get_Type_Alignment (GT))) >= Result_Bits;
       Equiv_MD       : constant MD_Type :=
         (if   Special_Atomic then Int_Ty (Result_Bits) else No_MD_Type);
-      Ptr_MD         : constant MD_Type :=
-        (if Special_Atomic then Pointer_Type (Equiv_MD) else No_MD_Type);
-      Ptr_Val        : constant Value_T :=
-        (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, +Ptr_MD, "")
-         else +Ptr);
       Val_To_Store   : Value_T          := +Expr;
       Store_Inst     : Value_T;
       Memory         : GL_Value;
@@ -1659,9 +1558,7 @@ package body GNATLLVM.Instructions is
       elsif Special_Atomic then
          Memory := Allocate_For_Type (GT);
          Discard (Build_Store (IR_Builder, Val_To_Store, +Memory));
-         Val_To_Store := Load_2 (IR_Builder, +Equiv_MD,
-                                 Pointer_Cast (IR_Builder, +Memory,
-                                               +Ptr_MD, ""), "");
+         Val_To_Store := Load_2 (IR_Builder, +Equiv_MD, +Memory, "");
       end if;
 
       --  If we're emitting C and this is a zero-sized store do nothing.
@@ -1674,7 +1571,7 @@ package body GNATLLVM.Instructions is
       --  Otherwise, do the actual store and set the attributes
 
       else
-         Store_Inst := Build_Store (IR_Builder, Val_To_Store, Ptr_Val);
+         Store_Inst := Build_Store (IR_Builder, Val_To_Store, +Ptr);
          Add_Flags_To_Instruction (Store_Inst, Ptr, Special_Atomic);
       end if;
    end Store;

@@ -644,8 +644,10 @@ package body GNATLLVM.Aliasing is
    procedure Initialize_TBAA_If_Changed
      (V : in out GL_Value; Old_V : GL_Value) is
    begin
-      if Related_Type (V) /= Related_Type (Old_V)
-        or else Relationship (V) /= Relationship (Old_V)
+      if Is_Reference (V)
+        and then (Related_Type (V) /= Related_Type (Old_V)
+                  or else Relationship (V) /= Relationship (Old_V)
+                  or else Relationship (V) = Reference_To_Unknown)
       then
          Initialize_TBAA (V);
       end if;

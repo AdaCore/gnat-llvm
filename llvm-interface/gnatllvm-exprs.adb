@@ -1795,7 +1795,7 @@ package body GNATLLVM.Exprs is
               and then Is_Pointer (Designated_Type_Of (Dest))
               and then Type_Of (Src) /= Designated_Type_Of (Dest)
             then
-               Src := Pointer_Cast (Src, Designated_Type_Of (Dest));
+               Src := G_Is (Src, Dest_GT);
             end if;
          end if;
 
@@ -1815,8 +1815,7 @@ package body GNATLLVM.Exprs is
 
          begin
             if Size /= 0 then
-               Build_MemSet (Pointer_Cast (Get (Dest, Reference),
-                                           A_Char_GL_Type),
+               Build_MemSet (Get (Dest, Reference),
                              Const_Null (SSI_GL_Type), Size,
                              To_Bytes (Get_Type_Alignment (Dest_GT)),
                              Is_Volatile (Dest),
@@ -1845,8 +1844,8 @@ package body GNATLLVM.Exprs is
          if Relationship (Dest) = Fat_Pointer
            or else Type_Of (Src) /= Element_Type_Of (Dest)
          then
-            Dest := Ptr_To_Relationship (Get (Dest, Reference), Src,
-                                         Ref (Relationship (Src)));
+            Dest := G_Is_Relationship (Get (Dest, Reference), Src,
+                                       Ref (Relationship (Src)));
          end if;
 
          Store (Src, Dest);
@@ -1925,8 +1924,6 @@ package body GNATLLVM.Exprs is
             elsif (Forwards_OK and then Backwards_OK)
               or else (Present (Expr) and then Is_Safe_From (Dest, Expr))
             then
-               Mem_Src := Pointer_Cast (Mem_Src, A_Char_GL_Type);
-               Mem_Dst := Pointer_Cast (Mem_Dst, A_Char_GL_Type);
                Build_MemCpy (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
                              Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
                              Size, Need_Volatile,
@@ -2260,7 +2257,7 @@ package body GNATLLVM.Exprs is
          if Present (Output_Variable) then
             Store
               (Call (Asm, Fn_MD, Args),
-               Ptr_To_Ref (Output_Val, Related_Type (Asm)));
+               G_Is_Ref (Output_Val, Related_Type (Asm)));
          else
             Call (Asm, Fn_MD, Args);
          end if;

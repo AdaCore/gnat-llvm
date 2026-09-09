@@ -67,8 +67,7 @@ package body GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0;
-      Unknown_MD  : MD_Type           := No_MD_Type) return GL_Value
+      TBAA_Offset : ULL               := 0) return GL_Value
    is
    begin
       --  If known, tell CCG what MD_Type we used to create V
@@ -89,8 +88,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       return (V, GT, MD, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
-              Overflowed, Aliases_All, SM_Object, TBAA_Type, TBAA_Offset,
-              Unknown_MD);
+              Overflowed, Aliases_All, SM_Object, TBAA_Type, TBAA_Offset);
    end G;
 
    -----------------------
@@ -204,6 +202,44 @@ package body GNATLLVM.GLValue is
             return False;
       end case;
    end GL_Value_Is_Valid_Int;
+
+   --------------
+   -- G_Is_Ref --
+   --------------
+
+   function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
+      R : constant GL_Relationship := Relationship_For_Ref (GT);
+
+   begin
+      return GM_TBAA (V, GT, Type_For_Relationship (GT, R), R, V);
+   end G_Is_Ref;
+
+   -------------
+   -- GM_TBAA --
+   -------------
+
+   function GM_TBAA
+     (V  : GL_Value;
+      GT : GL_Type;
+      MD : MD_Type;
+      R  : GL_Relationship := Data;
+      GV : GL_Value) return GL_Value
+   is
+      Result : GL_Value := G (+V, GT, MD, R,
+                              Alignment   => Alignment   (GV),
+                              Is_Pristine => Is_Pristine (GV),
+                              Is_Volatile => Is_Volatile (GV),
+                              Is_Atomic   => Is_Atomic   (GV),
+                              Overflowed  => Overflowed  (GV),
+                              Aliases_All => Aliases_All (GV),
+                              SM_Object   => SM_Object   (GV),
+                              TBAA_Type   => TBAA_Type   (GV),
+                              TBAA_Offset => TBAA_Offset (GV));
+
+   begin
+      Initialize_TBAA_If_Changed (Result, V);
+      return Result;
+   end GM_TBAA;
 
    ---------------
    -- Operators --
@@ -438,15 +474,6 @@ package body GNATLLVM.GLValue is
       V.Aliases_All := V.Aliases_All or else AA;
    end Set_Aliases_All;
 
-   --------------------
-   -- Set_Unknown_MD --
-   --------------------
-
-   procedure Set_Unknown_MD  (V : in out GL_Value; MD : MD_Type) is
-   begin
-      V.Unknown_MD := MD;
-   end Set_Unknown_MD;
-
    -------------------
    -- Set_TBAA_Type --
    -------------------
@@ -589,17 +616,13 @@ package body GNATLLVM.GLValue is
 
    function Element_Type_Of (V : GL_Value) return MD_Type is
    begin
-      --  For a double reference, we get the designated type of the type of
-      --  the value.
+      --  For a double reference and relationship to Unknown, we get the
+      --  designated type of the type of the value.
 
-      if Is_Double_Reference (V) then
+      if Is_Double_Reference (V)
+        or else Relationship (V) = Reference_To_Unknown
+      then
          return Designated_Type (Type_Of (V));
-
-      --  If this is a reference to Unknown, we're supposed to have set the
-      --  type to use.
-
-      elsif Relationship (V) = Reference_To_Unknown then
-         return Unknown_MD (V);
 
       --  If this is a thin pointer, it points to data
       elsif Relationship (V) = Thin_Pointer then
@@ -762,7 +785,9 @@ package body GNATLLVM.GLValue is
    ---------------------------
 
    function Type_For_Relationship
-     (GT : GL_Type; R : GL_Relationship) return MD_Type
+     (GT         : GL_Type;
+      R          : GL_Relationship;
+      Unknown_MD : MD_Type := No_MD_Type) return MD_Type
    is
       MD : constant MD_Type :=
         (if Present (GT) then Type_Of (GT) else No_MD_Type);
@@ -772,7 +797,8 @@ package body GNATLLVM.GLValue is
       --  that relationship and make a pointer to it.
 
       if Deref (R) /= Invalid then
-         return Pointer_Type (Type_For_Relationship (GT, Deref (R)));
+         return Pointer_Type (Type_For_Relationship (GT, Deref (R),
+                                                     Unknown_MD));
       end if;
 
       --  Handle all other relationships here
@@ -809,9 +835,11 @@ package body GNATLLVM.GLValue is
          when Fat_Reference_To_Subprogram =>
             return Create_Subprogram_Access_Type;
 
+         when Unknown =>
+            return Unknown_MD;
+
          when others =>
-            pragma Assert (Standard.False);
-            return Void_Ptr_MD;
+            return No_MD_Type;
       end case;
    end Type_For_Relationship;
 
@@ -917,7 +945,7 @@ package body GNATLLVM.GLValue is
       --  pointer.
 
       elsif Is_Double_Reference (Our_R) and then Is_Double_Reference (R) then
-         return Ptr_To_Relationship (V, GT, R);
+         return G_Is_Relationship (V, GT, R);
 
       --  If we just need to make this into a reference, we can store it
       --  into memory since we only have those relationships if this is a
@@ -1078,7 +1106,7 @@ package body GNATLLVM.GLValue is
             --  the language allows such a reference.
 
             if Our_R = Fat_Pointer then
-               return Ptr_To_Relationship
+               return G_Is_Relationship
                  (Extract_Value_To_Relationship
                     (GT, V, 1, Reference_To_Bounds),
                   GT, R);
@@ -1104,7 +1132,7 @@ package body GNATLLVM.GLValue is
             --  converting it. For fat pointer, we can extract it.
 
             if Our_R in Thin_Pointer | Trampoline then
-               return Ptr_To_Relationship (V, GT, R);
+               return G_Is_Relationship (V, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
             elsif Our_R = Fat_Pointer then
@@ -1113,7 +1141,7 @@ package body GNATLLVM.GLValue is
                                   GT);
             elsif Our_R = Fat_Reference_To_Subprogram then
                return
-                 Ptr_To_Relationship (Extract_Value_To_Ref (GT, V, 0), GT, R);
+                 G_Is_Relationship (Extract_Value_To_Ref (GT, V, 0), GT, R);
 
             --  If we have a reference to both bounds and data, we can
             --  compute where the data starts. If we have the actual
@@ -2444,11 +2472,6 @@ package body GNATLLVM.GLValue is
          Write_Str ("TBAA_Offset=");
          Write_Int (Int (V.TBAA_Offset));
          Write_Str (" ");
-      end if;
-
-      if Present (V.Unknown_MD) then
-         Write_Str ("Unknown_MD=");
-         Dump_MD_Type (V.Unknown_MD);
       end if;
 
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");

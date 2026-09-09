@@ -176,7 +176,7 @@ package body GNATLLVM.Records.Field_Ref is
       --  a reference to its discrminant.
 
       if Chars (Our_Field) = Name_uParent then
-         Result := Ptr_To_Ref (V, F_GT);
+         Result := G_Is_Ref (V, F_GT);
          Add_To_LValue_List (Result);
          return Result;
 
@@ -186,10 +186,10 @@ package body GNATLLVM.Records.Field_Ref is
 
       elsif Present (RI.GT) then
          pragma Assert (not Is_Bitfield (Field));
-         Result := GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
-                        (1 => Offset));
+         Result :=
+           GEP (SSI_GL_Type, G_Is_Ref (V, SSI_GL_Type), (1 => Offset));
          Set_Alignment (Result, Nat'Min (Alignment (V), Alignment (Offset)));
-         return Ptr_To_Ref (Result, F_GT);
+         return G_Is_Ref (Result, F_GT);
       end if;
 
       --  Get the primitive form of V and make sure that it's not a fat or
@@ -205,8 +205,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       if Our_Idx /= First_Idx then
          Result := Set_Alignment
-           (GEP (SSI_GL_Type, Pointer_Cast (Result, A_Char_GL_Type),
-                 (1 => Offset)),
+           (GEP (SSI_GL_Type, G_Is_Ref (Result, SSI_GL_Type), (1 => Offset)),
             Nat'Min (Alignment (V), Alignment (Offset)));
       end if;
 
@@ -214,10 +213,8 @@ package body GNATLLVM.Records.Field_Ref is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result    :=
-           Ptr_To_Relationship (Result, Pointer_Type (RI.MD), Rec_GT,
-                                Reference_To_Unknown);
-         Set_Unknown_MD (Result, RI.MD);
+         Result    := G_Is_Relationship (Result, Rec_GT, Reference_To_Unknown,
+                                         Unknown_MD => RI.MD);
          Result_MD := RI.MD;
       else
          Result    := Convert_Ref (Result, Rec_GT);
@@ -232,15 +229,7 @@ package body GNATLLVM.Records.Field_Ref is
          Result, Result_MD,
          (1 => Const_Null_32, 2 => Const_Int_32 (ULL (FI.Field_Ordinal))));
 
-      --  If we've set this to a an unknown reference, set the type so that
-      --  we know what we're pointing to.
-
       Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
-
-      if Is_Bitfield (Field) then
-         Set_Unknown_MD (Result, Element_Type (Result_MD, FI.Field_Ordinal));
-      end if;
-
       return Result;
 
    end Record_Field_Offset;
@@ -585,8 +574,11 @@ package body GNATLLVM.Records.Field_Ref is
       --  than a byte. If so, update the address and bit offset.
 
       if Is_Reference (Out_BRD.LHS) and then Out_BRD.Offset >=  UBPU then
-         Out_BRD.LHS := Ptr_To_Relationship (Out_BRD.LHS, Void_Ptr_MD,
-                                             Out_BRD.GT, Reference_To_Unknown);
+         Out_BRD.LHS    := G_Is_Relationship (Out_BRD.LHS, Out_BRD.GT,
+                                              Reference_To_Unknown,
+                                              Unknown_MD =>
+                                                Designated_Type
+                                                  (Type_Of (Out_BRD.LHS)));
          Out_BRD.LHS    := GEP_To_Relationship
            (SSI_GL_Type, Reference_To_Unknown, Out_BRD.LHS, Byte_MD,
             (1 => Size_Const_Int (Out_BRD.Offset / UBPU)));
@@ -679,7 +671,7 @@ package body GNATLLVM.Records.Field_Ref is
       Result := Record_Field_Offset (Get (Result, Any_Reference,
                                           For_LHS => True),
                                      Selector_Field (N));
-      Result := Ptr_To_Ref (Result, SSI_GL_Type);
+      Result := G_Is_Ref (Result, SSI_GL_Type);
       Bit_Offset := +Field_Bit_Offset (Selector_Field (N));
 
       --  Now we process the rest of the component references, from outer
@@ -803,10 +795,9 @@ package body GNATLLVM.Records.Field_Ref is
             --  location within the field.
 
             if Is_Reference (Result) then
-               Result := Ptr_To_Relationship (Result, Pointer_Type (MD),
-                                              Reference_To_Unknown);
+               Result := G_Is_Relationship (Result, F_GT, Reference_To_Unknown,
+                                            Unknown_MD => MD);
 
-               Set_Unknown_MD (Result, MD);
                Result := Get (Result, Unknown);
             end if;
 
@@ -904,12 +895,11 @@ package body GNATLLVM.Records.Field_Ref is
             Memory         : constant GL_Value :=
               (if   Present (LHS) then LHS
                else Allocate_For_Type (F_GT));
-            Mem_As_Int_Ptr : GL_Value          :=
-              Ptr_To_Relationship (Memory, Pointer_Type (Type_Of (Result)),
-                                   F_GT, Reference_To_Unknown);
+            Mem_As_Int_Ptr : constant GL_Value :=
+              G_Is_Relationship (Memory, F_GT, Reference_To_Unknown,
+                                Unknown_MD => Type_Of (Related_Type (Result)));
 
          begin
-            Set_Unknown_MD (Mem_As_Int_Ptr, Type_Of (Related_Type (Result)));
             Store (Result, Mem_As_Int_Ptr);
             return Memory;
          end;
@@ -955,9 +945,8 @@ package body GNATLLVM.Records.Field_Ref is
                           F_GT, F_MD, Unknown);
          else
             New_RHS := Get (New_RHS, Reference, For_LHS => True);
-            New_RHS := Ptr_To_Relationship (New_RHS, Pointer_Type (F_MD),
-                                            Reference_To_Unknown);
-            Set_Unknown_MD (New_RHS, F_MD);
+            New_RHS := G_Is_Relationship (New_RHS, F_GT, Reference_To_Unknown,
+                                          Unknown_MD => F_MD);
          end if;
       end if;
 
@@ -974,10 +963,9 @@ package body GNATLLVM.Records.Field_Ref is
                Aligned_MD : constant MD_Type := Int_Ty (Byte_Align (Num_Bits));
 
             begin
-               New_RHS :=
-                  Ptr_To_Relationship (New_RHS, Pointer_Type (Aligned_MD),
-                                       Reference_To_Unknown);
-               Set_Unknown_MD (New_RHS, Aligned_MD);
+               New_RHS := G_Is_Relationship (New_RHS, F_GT,
+                                             Reference_To_Unknown,
+                                             Unknown_MD => Aligned_MD);
             end;
          end if;
 
@@ -1023,9 +1011,8 @@ package body GNATLLVM.Records.Field_Ref is
                   return No_GL_Value;
                end if;
 
-               LHS_Ptr := Ptr_To_Relationship (LHS, Pointer_Type (MD),
-                                               Reference_To_Unknown);
-               Set_Unknown_MD (LHS_Ptr, MD);
+               LHS_Ptr := G_Is_Relationship (LHS, F_GT, Reference_To_Unknown,
+                                             Unknown_MD => MD);
                LHS := Load (LHS_Ptr);
             elsif Is_Undef (LHS) then
                LHS := G (Const_Null (MD), F_GT, MD, Unknown);

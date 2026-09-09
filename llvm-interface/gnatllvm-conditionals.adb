@@ -148,9 +148,7 @@ package body GNATLLVM.Conditionals is
             Memcmp  : constant GL_Value :=
               (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                else Call (Get_Memory_Compare_Fn,
-                          (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
-                           2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
-                           3 => Size)));
+                          (1 => LHS_Val, 2 => RHS_Val, 3 => Size)));
          begin
             return I_Cmp (Operation.Signed, Memcmp,
                           Const_Null (Integer_GL_Type));
@@ -343,10 +341,8 @@ package body GNATLLVM.Conditionals is
                Memcmp : constant GL_Value :=
                  (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                   else Call (Get_Memory_Compare_Fn,
-                             (1 => Pointer_Cast (Get (LHS_Val, Reference),
-                                                 A_Char_GL_Type),
-                              2 => Pointer_Cast (Get (RHS_Val, Reference),
-                                                 A_Char_GL_Type),
+                             (1 => Get (LHS_Val, Reference),
+                              2 => Get (RHS_Val, Reference),
                               3 => Size)));
                Cond   : constant GL_Value :=
                  I_Cmp (Int_EQ, Memcmp, Const_Null (Integer_GL_Type));
@@ -396,14 +392,6 @@ package body GNATLLVM.Conditionals is
       if Is_Access_Type (LHS) then
          LHS := Get (From_Access (LHS), Reference_For_Integer);
          RHS := Get (From_Access (RHS), Reference_For_Integer);
-
-         --  Now we have simple pointers, but they may not be the same LLVM
-         --  type. If they aren't, convert the RHS to the type of the LHS.
-
-         if Type_Of (LHS) /= Type_Of (RHS) then
-            RHS := Pointer_Cast (RHS, LHS);
-         end if;
-
          return I_Cmp (Operation.Unsigned, LHS, RHS);
 
       elsif Is_Floating_Point_Type (LHS) then
@@ -415,18 +403,11 @@ package body GNATLLVM.Conditionals is
                           or else Is_Access_Type (LHS));
 
          --  At this point, if LHS is an access type, then RHS is too and
-         --  we know the aren't pointers to unconstrained arrays. It's
-         --  possible that the two pointer types aren't the same, however.
-         --  So in that case, convert one to the pointer of the other.
-
-         if Is_Access_Type (LHS) and then Type_Of (RHS) /= Type_Of (LHS) then
-            RHS := Pointer_Cast (RHS, LHS);
-         end if;
-
-         --  If this is a one-bit type and we are doing an equality
-         --  comparison with one or an inequality comparison with zero, the
-         --  result is the LHS. We could convert the opposite comparison
-         --  into a NOT operation, but that's not worth the trouble.
+         --  we know the aren't pointers to unconstrained arrays. If this
+         --  is a one-bit type and we are doing an equality comparison with
+         --  one or an inequality comparison with zero, the result is the
+         --  LHS. We could convert the opposite comparison into a NOT
+         --  operation, but that's not worth the trouble.
 
          if Type_Of (LHS) = Bit_MD
            and then ((Kind = N_Op_Eq and then Is_Const_1 (RHS))

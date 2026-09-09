@@ -153,84 +153,13 @@ package GNATLLVM.Instructions is
      with Pre  => Present (V) and then Present (MD),
           Post => Present (Bit_Cast_To_Relationship'Result);
 
-   function Pointer_Cast
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
-          Post => Is_Pointer (Pointer_Cast'Result), Inline;
-
-   function Pointer_Cast
-     (V, T : GL_Value; Name : String := "") return GL_Value
-   is
-     (Initialize_TBAA
-        (G_From (Pointer_Cast (IR_Builder, +V, +Type_Of (T), Name), T)))
-     with Pre  => Is_Pointer (V) and then Is_Pointer (T),
-          Post => Is_Pointer (Pointer_Cast'Result);
-
-   function Pointer_Cast
-     (V : GL_Value; MD : MD_Type; Name : String := "") return GL_Value
-   is
-     (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name), Related_Type (V),
-             MD, Relationship (V), V)))
-     with Pre  => Is_Pointer (V) and then Is_Pointer (MD),
-          Post => Is_Pointer (Pointer_Cast'Result);
-
-   function Ptr_To_Ref
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
-          Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
-
-   function Ptr_To_Array_Ref
-     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   function Ptr_To_Array_Ref (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Array_Ref'Result)
                   and then Is_Variable_Array
                              (Designated_Type
                                (Type_Of (Ptr_To_Array_Ref'Result))),
           Inline;
-
-   function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Is_Pointer (T),
-          Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
-
-   function Ptr_To_Relationship
-     (V    : GL_Value;
-      GT   : GL_Type;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
-          Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
-
-   function Ptr_To_Relationship
-     (V    : GL_Value;
-      MD   : MD_Type;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-     (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name),
-             Related_Type (V), MD, R, V)))
-     with Pre  => Is_Pointer (V) and then Present (MD),
-          Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
-
-   function Ptr_To_Relationship
-     (V    : GL_Value;
-      MD   : MD_Type;
-      GT   : GL_Type;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-     (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, R, V)))
-     with Pre  => Is_Pointer (V) and then Present (MD) and then Present (GT),
-          Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
-
-   function Ptr_To_Relationship
-     (V, T : GL_Value;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (T),
-          Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value

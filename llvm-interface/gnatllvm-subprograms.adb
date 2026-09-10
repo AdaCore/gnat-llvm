@@ -257,6 +257,11 @@ package body GNATLLVM.Subprograms is
    Subprogram_Access_Type : MD_Type                := No_MD_Type;
    --  A type used for a subprogram access
 
+   Dummy_Memory : Value_T                          := No_Value_T;
+   --  When debugging, a 'null' statement is emitted as a store to
+   --  some dummy memory.  This is the memory in question.  See
+   --  Emit_Null_Statement.
+
    ----------------------
    -- Number_In_Params --
    ----------------------
@@ -3139,6 +3144,7 @@ package body GNATLLVM.Subprograms is
       Activation_Rec_Param := No_GL_Value;
       Return_Address_Param := No_GL_Value;
       Entry_Block_Allocas  := No_Position_T;
+      Dummy_Memory         := No_Value_T;
       Position_Builder_At_End (Create_Basic_Block ("entry"));
    end Enter_Subp;
 
@@ -3233,5 +3239,46 @@ package body GNATLLVM.Subprograms is
          end if;
       end loop;
    end Add_Functions_To_Module;
+
+   -------------------------
+   -- Emit_Null_Statement --
+   -------------------------
+
+   procedure Emit_Null_Statement (N : N_Null_Statement_Id) is
+   begin
+      --  When emitting debug info, emit some code for a null
+      --  statement.  This will let a debugger stop here.  However,
+      --  emit something that optimizers will normally delete;
+      --  something like "llvm.sideeffect" might negatively affect
+      --  optimization.
+      if Emit_Debug_Info and then not Emit_C and then Comes_From_Source (N)
+         and then Get_Insert_Block (IR_Builder) /= null
+      then
+         --  Allocate the memory just once per subprogram, and hoist
+         --  it to the entry block; this avoids a potential problem
+         --  with alloca in a loop.
+         if Dummy_Memory = No_Value_T then
+            declare
+               Current_BB : constant Basic_Block_T := Get_Insert_Block;
+            begin
+               Set_Current_Position (Entry_Block_Allocas);
+               Dummy_Memory := Alloca (IR_Builder, Byte_T, "");
+               Position_Builder_At_End (Current_BB);
+            end;
+         end if;
+
+         declare
+            Zero : constant Value_T :=
+              Const_Int (Byte_T, 0, False);
+            Store : constant Value_T :=
+              Build_Store (IR_Builder, Zero, Dummy_Memory);
+         begin
+            --  Explicitly use a non-volatile store.  This will
+            --  normally be preserved at -O0 but be removed at higher
+            --  optimization levels.
+            Set_Volatile (Store, False);
+         end;
+      end if;
+   end Emit_Null_Statement;
 
 end GNATLLVM.Subprograms;

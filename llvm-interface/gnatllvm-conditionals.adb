@@ -1330,11 +1330,13 @@ package body GNATLLVM.Conditionals is
          Position_Builder_At_End (Phi_BB);
          Result := Build_Phi (Values, BBs);
 
-         --  In the elementary case, convert to the result type, since we
-         --  may not already have done this.
+         --  In the data case, convert to the result type, since we may not
+         --  already have done this.
 
          return (if    Related_Type (Result) = Expr_GT then Result
-                 elsif Is_Data (Result) then Convert (Result, Expr_GT)
+                 elsif Is_Data (Result) and then Is_Elementary_Type (Result)
+                 then  Convert (Result, Expr_GT)
+                 elsif Is_Data (Result) then G_Is (Result, Expr_GT)
                  else  Convert_Ref (Result, Expr_GT));
       end;
    end Emit_If_Expression;

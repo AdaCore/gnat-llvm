@@ -828,6 +828,31 @@ package body GNATLLVM.Wrapper is
       return Value (Result_C);
    end Get_Target_Default_CPU;
 
+   -----------------------------
+   -- Get_Normalized_CPU_Name --
+   -----------------------------
+
+   function Get_Normalized_CPU_Name (Triple, CPU : String)
+     return String_Access
+   is
+      use Interfaces.C;
+
+      function Get_Normalized_CPU_Name_C
+        (Triple, CPU : char_array) return chars_ptr with
+        Import, Convention => C, External_Name => "Get_Normalized_CPU_Name";
+
+      Triple_C : constant char_array    := To_C (Triple);
+      CPU_C    : constant char_array    := To_C (CPU);
+      Result_C : chars_ptr              :=
+        Get_Normalized_CPU_Name_C (Triple_C, CPU_C);
+      Result   : constant String_Access :=
+        (if Result_C = Null_Ptr then null else new String'(Value (Result_C)));
+
+   begin
+      Free (Result_C);
+      return Result;
+   end Get_Normalized_CPU_Name;
+
    ----------------------------
    -- Get_Target_Default_ABI --
    ----------------------------

@@ -750,6 +750,16 @@ package body GNATLLVM.Codegen is
          end if;
       end;
 
+      declare
+         Normalized_CPU : constant String_Access :=
+           Get_Normalized_CPU_Name (Normalized_Target_Triple.all, CPU.all);
+      begin
+         if Normalized_CPU /= null then
+            Free (CPU);
+            CPU := Normalized_CPU;
+         end if;
+      end;
+
       --  The hardware-assisted address sanitizer replaces each global with
       --  an alias whose address carries a tag in its top byte. The backend
       --  must know about it and access globals via the GOT.

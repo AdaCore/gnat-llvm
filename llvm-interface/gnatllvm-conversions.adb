@@ -364,6 +364,7 @@ package body GNATLLVM.Conversions is
          if Is_Unchecked then
             Initialize_Alignment (Result);
          end if;
+
          return Result;
 
       --  If we're converting to an elementary type and need an overflow
@@ -646,24 +647,27 @@ package body GNATLLVM.Conversions is
                                  or else Is_Biased_GL_Type (Related_Type (V)));
       Prim_GT     : constant GL_Type  :=
         (if Is_Unc_Bias then GT else Primitive_GL_Type (GT));
-      Src_Access  : constant Boolean  := Is_Access_Type (V);
-      Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
-      Src_FP      : constant Boolean  := Is_Floating_Point_Type (V);
-      Dest_FP     : constant Boolean  := Is_Floating_Point_Type (Prim_GT);
       No_Padding  : constant Boolean  :=
-        not (Has_Padding (V) and then (Src_FP or else Is_Integer_Type (V)));
+        not (Has_Padding (V) and then (Is_Floating_Point_Type (V)
+                                       or else Is_Integer_Type (V)));
       In_V        : constant GL_Value :=
         (if   (Is_Unchecked and then No_Padding) or else Related_Type (V) = GT
          then V
          else To_Primitive (V));
       In_GT       : constant GL_Type  := Related_Type (In_V);
+      Src_Access  : constant Boolean  := Is_Access_Type (In_GT);
+      Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
+      Src_Int     : constant Boolean  := Is_Integer (Type_Of (In_GT));
+      Dest_Int    : constant Boolean  := Is_Integer (Type_Of (Prim_GT));
+      Src_FP      : constant Boolean  := Is_Floating_Point_Type (In_GT);
+      Dest_FP     : constant Boolean  := Is_Floating_Point_Type (Prim_GT);
       In_Overflow : constant Boolean  := Overflowed (V);
-      Value       : GL_Value          := In_V;
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
       Src_Size    : constant ULL      := Get_Value_Size (In_V);
       Dest_Size   : constant ULL      := Get_Value_Size (Prim_GT);
       Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
+      Value       : GL_Value          := In_V;
       Subp        : Cvtf              := null;
 
    begin
@@ -677,15 +681,19 @@ package body GNATLLVM.Conversions is
       elsif In_GT = GT then
          return In_V;
 
-      --  If the value is already of the desired LLVM type, we're done
-      --  unless one type is biased or if we're converting an unsigned
-      --  constant to signed and the result will be negative or if this is
-      --  an unchecked (but not non-truncating) conversion.
+      --  If the value is already of the desired type, we're done unless
+      --  one type is biased or if we're converting an unsigned constant to
+      --  signed and the result will be negative or if this is an unchecked
+      --  (but not non-truncating) conversion to an integral type. We need
+      --  to do this test with LLVM types because that's what determines
+      --  whether we need to generate any conversion instructions: two
+      --  different MD_Types may have different signedness, but converting
+      --  between them doesn't generate any code.
 
       elsif Type_T'(+Type_Of (In_V)) = +Type_Of (GT)
         and then not Is_Biased_GL_Type (In_V)
         and then not Is_Biased_GL_Type (GT)
-        and then not (Is_Unchecked and then not No_Truncation)
+        and then not (Is_Unchecked and then Src_Int and then not No_Truncation)
       then
          return Mark_Overflowed (G_Is (In_V, GT),
                                  (not Dest_Uns and then Src_Uns
@@ -707,9 +715,9 @@ package body GNATLLVM.Conversions is
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
-      elsif Dest_Access and then Is_Integer_Type (In_V) then
+      elsif Dest_Access and then Src_Int then
          Subp := Int_To_Ptr'Access;
-      elsif Src_Access and then Is_Integer_Type (GT) then
+      elsif Src_Access and then Dest_Int then
          Subp := Ptr_To_Int'Access;
 
       --  For pointer to pointer, call our helper
@@ -1052,9 +1060,14 @@ package body GNATLLVM.Conversions is
       Value : Value_T;
 
    begin
-      --  If the input is an actual pointer, return it.
+      --  If this is already the proper type, return it.
 
-      if Is_Pointer (MD) then
+      if Related_Type (V) = GT then
+         return V;
+
+      --  If the input is an actual pointer, just show it's of the proper type.
+
+      elsif Is_Pointer (MD) then
          return G_Is (V, GT);
       end if;
 

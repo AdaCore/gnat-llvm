@@ -1286,6 +1286,22 @@ package body GNATLLVM.Codegen is
       end if;
    end Output_File_Name;
 
+   ----------------------------
+   -- Emit_Empty_Object_File --
+   ----------------------------
+
+   procedure Emit_Empty_Object_File (Name : String) is
+      Err_Msg : aliased Ptr_Err_Msg_Type;
+   begin
+      if Target_Machine_Emit_To_File (Target_Machine,
+                                      Module_Create_With_Name ("Empty"),
+                                      Name, Object_File, Err_Msg'Address)
+      then
+         Early_Error ("could not write " & Name & ": " &
+                      Get_LLVM_Error_Msg (Err_Msg));
+      end if;
+   end Emit_Empty_Object_File;
+
 begin
    Initialize_GNAT_LLVM;
 

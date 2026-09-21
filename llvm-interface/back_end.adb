@@ -93,12 +93,19 @@ package body Back_End is
       Success       : Boolean;
 
    begin
-      --  If we're to generate code, create an empty .o file is there isn't
+      --  If we're to generate code, create an empty .o file if there isn't
       --  one already. Then set the time of that file to be the same as
       --  that of the .ali file.
 
       if Code_Generation = Write_Object then
-         Close (Create_New_File (Obj_File_Name, Binary));
+
+         --  If the front-end called us to generate code, then the object file
+         --  exists already. Otherwise, we need to create an empty one.
+
+         if not Back_End_Called then
+            Emit_Empty_Object_File (Obj_File_Name);
+         end if;
+
          Osint.C.Set_File_Name (ALI_Suffix.all);
          GNAT.OS_Lib.Copy_Time_Stamps
            (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);

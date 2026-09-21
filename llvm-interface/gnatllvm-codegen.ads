@@ -177,6 +177,9 @@ package GNATLLVM.Codegen is
    function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
    --  Get the LLVM error message that was stored in Msg
 
+   procedure Emit_Empty_Object_File (Name : String);
+   --  Emit an empty object file for the configured target
+
    --  ??? The following should be moved back to the body once VC21-031 aka
    --  eng/toolchain/gnat-llvm#361 is fixed.
 

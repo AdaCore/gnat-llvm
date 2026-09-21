@@ -77,6 +77,12 @@ package body GNATLLVM.Compile is
       Int_64_Type  : Opt_Signed_Integer_Kind_Id;
 
    begin
+      --  Record that we've been called. This allows us to perform some later
+      --  actions only if we haven't been called (e.g., because there was no
+      --  code to compile in the source file).
+
+      Back_End_Called := True;
+
       --  If we're going to generate C code (or LLVM IR as if we were to
       --  generate C code), initialize that subsystem.
 

@@ -19,12 +19,11 @@ with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 
-with Ada.Directories; use Ada.Directories;
-with GNAT.OS_Lib;     use GNAT.OS_Lib;
-with Namet;           use Namet;
-with Osint;           use Osint;
-with Osint.C;         use Osint.C;
-with Output;          use Output;
+with GNAT.OS_Lib; use GNAT.OS_Lib;
+with Namet;       use Namet;
+with Osint;       use Osint;
+with Osint.C;
+with Output;      use Output;
 
 with Adabkend;
 with Gnatvsn; use Gnatvsn;
@@ -90,10 +89,7 @@ package body Back_End is
 
    procedure Gen_Or_Update_Object_File is
       Obj_File_Name : constant String :=
-        (if Output_File_Name_Present then Get_Output_Object_File_Name
-         else Base_Name
-                (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
-                & Get_Target_Object_Suffix.all);
+        Output_File_Name (Get_Target_Object_Suffix.all);
       Success       : Boolean;
 
    begin

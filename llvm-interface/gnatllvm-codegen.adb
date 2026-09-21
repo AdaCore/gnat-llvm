@@ -1161,7 +1161,8 @@ package body GNATLLVM.Codegen is
          end Assembly;
 
          when Write_Object => Object : declare
-            S : constant String := Output_File_Name (".o");
+            S : constant String :=
+              Output_File_Name (Get_Target_Object_Suffix.all);
 
          begin
             if Target_Machine_Emit_To_File (Target_Machine, Module, S,

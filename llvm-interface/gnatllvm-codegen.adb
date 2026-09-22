@@ -1260,30 +1260,20 @@ package body GNATLLVM.Codegen is
 
    function Output_File_Name (Extension : String) return String is
    begin
-      if not Output_File_Name_Present then
-         return
-           Ada.Directories.Base_Name
-             (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
-           & Extension;
 
-      --  The Output file name was specified in the -o argument
+      --  If the Output file name was specified in the -o argument, assume that
+      --  the user wants us to use it verbatim.
 
-      else
-         --  Locate the last dot to remove the extension of native platforms
-         --  (for example, file.o).
-
-         declare
-            S : constant String := Get_Output_Object_File_Name;
-         begin
-            for J in reverse S'Range loop
-               if S (J) = '.' then
-                  return S (S'First .. J - 1) & Extension;
-               end if;
-            end loop;
-
-            return S & Extension;
-         end;
+      if Output_File_Name_Present then
+         return Get_Output_Object_File_Name;
       end if;
+
+      --  Otherwise, replace the source file's extension
+
+      return
+        Ada.Directories.Base_Name
+          (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
+        & Extension;
    end Output_File_Name;
 
    ----------------------------

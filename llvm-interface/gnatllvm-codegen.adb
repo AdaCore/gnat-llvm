@@ -530,7 +530,10 @@ package body GNATLLVM.Codegen is
    -----------------------
 
    procedure Scan_Command_Line is
+      LLVM_Major_Version : aliased unsigned;
    begin
+      Get_Version (LLVM_Major_Version'Access, null, null);
+
       --  Scan command line for relevant switches and initialize LLVM
       --  target.
 
@@ -549,21 +552,21 @@ package body GNATLLVM.Codegen is
       --  absence of explicit configuration.
 
       if not Loop_Vectorization_Set then
-#if LLVM_Version_Major > 19 then
-         Loop_Vectorization :=
-           (Code_Opt_Level > 1 and then Size_Opt_Level < 2);
-#else
-         Loop_Vectorization := False;
-#end if;
+         if LLVM_Major_Version > 19 then
+            Loop_Vectorization :=
+              (Code_Opt_Level > 1 and then Size_Opt_Level < 2);
+         else
+            Loop_Vectorization := False;
+         end if;
       end if;
 
       if not SLP_Vectorization_Set then
-#if LLVM_Version_Major > 19 then
-         SLP_Vectorization :=
-           (Code_Opt_Level > 1 or else Size_Opt_Level > 1);
-#else
-         SLP_Vectorization := False;
-#end if;
+         if LLVM_Major_Version > 19 then
+            SLP_Vectorization :=
+              (Code_Opt_Level > 1 or else Size_Opt_Level > 1);
+         else
+            SLP_Vectorization := False;
+         end if;
       end if;
 
       --  If emitting C, change some other defaults

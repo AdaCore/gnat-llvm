@@ -785,7 +785,10 @@ package body GNATLLVM.Records.Debug is
             Storage_Offset : constant ULL        := (Offset / UBPU) * UBPU;
 
          begin
-            if Is_Bitfield (F) then
+            if Is_Bitfield_By_Rep (F) or else
+               (Known_Static_Esize (Etype (F))
+                and then Esize (F) /= Esize (Etype (F)))
+            then
                MD := DI_Create_Bit_Field_Member_Type
                  (No_Metadata_T, Name, File, Get_Physical_Line_Number (F_S),
                   UI_To_ULL (Esize (F)), Offset, Storage_Offset, Mem_MD,

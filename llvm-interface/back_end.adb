@@ -19,12 +19,11 @@ with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 
-with Ada.Directories; use Ada.Directories;
-with GNAT.OS_Lib;     use GNAT.OS_Lib;
-with Namet;           use Namet;
-with Osint;           use Osint;
-with Osint.C;         use Osint.C;
-with Output;          use Output;
+with GNAT.OS_Lib; use GNAT.OS_Lib;
+with Namet;       use Namet;
+with Osint;       use Osint;
+with Osint.C;
+with Output;      use Output;
 
 with Adabkend;
 with Gnatvsn; use Gnatvsn;
@@ -90,19 +89,23 @@ package body Back_End is
 
    procedure Gen_Or_Update_Object_File is
       Obj_File_Name : constant String :=
-        (if Output_File_Name_Present then Get_Output_Object_File_Name
-         else Base_Name
-                (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
-                & Get_Target_Object_Suffix.all);
+        Output_File_Name (Get_Target_Object_Suffix.all);
       Success       : Boolean;
 
    begin
-      --  If we're to generate code, create an empty .o file is there isn't
+      --  If we're to generate code, create an empty .o file if there isn't
       --  one already. Then set the time of that file to be the same as
       --  that of the .ali file.
 
       if Code_Generation = Write_Object then
-         Close (Create_New_File (Obj_File_Name, Binary));
+
+         --  If the front-end called us to generate code, then the object file
+         --  exists already. Otherwise, we need to create an empty one.
+
+         if not Back_End_Called then
+            Emit_Empty_Object_File (Obj_File_Name);
+         end if;
+
          Osint.C.Set_File_Name (ALI_Suffix.all);
          GNAT.OS_Lib.Copy_Time_Stamps
            (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);

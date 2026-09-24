@@ -146,8 +146,7 @@ package body GNATLLVM.DebugInfo is
 
    function Create_Bounds_Type_Data
      (GT : GL_Type; Size : out ULL) return Metadata_T
-     with Pre  => Present (GT)
-                  and then Is_Unconstrained_Array (Full_Base_Type (GT)),
+     with Pre  => Present (GT),
           Post => Present (Create_Bounds_Type_Data'Result);
    --  Create debug information for the bounds of type GT and return the
    --  size of the resulting structure.
@@ -157,6 +156,11 @@ package body GNATLLVM.DebugInfo is
                   and then Is_Unconstrained_Array (Full_Base_Type (GT));
    --  Create debug information for the bounds and data of type GT if
    --  possible.
+
+   function Create_Fat_Pointer_Type_Data_From_Array (GT : GL_Type;
+                                                     Array_Type : Metadata_T)
+     return Metadata_T
+     with Pre => Present (GT);
 
    function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T
      with Pre => Present (GT)
@@ -875,49 +879,30 @@ package body GNATLLVM.DebugInfo is
 
    end Create_Bounds_And_Data_Type_Data;
 
-   ----------------------------------
-   -- Create_Fat_Pointer_Type_Data --
-   ----------------------------------
+   ---------------------------------------------
+   -- Create_Fat_Pointer_Type_Data_From_Array --
+   ---------------------------------------------
 
-   function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T is
+   function Create_Fat_Pointer_Type_Data_From_Array (GT : GL_Type;
+                                                     Array_Type : Metadata_T)
+     return Metadata_T
+   is
       S           : constant Source_Ptr := Sloc (GT);
-      DT          : constant GL_Type    := Full_Designated_GL_Type (GT);
-      CT          : constant GL_Type    := Full_Component_GL_Type (DT);
       Size        : constant ULL        := ULL (Thin_Pointer_Size);
       Align       : constant Nat        := Thin_Pointer_Size;
-      Ndim        : constant Nat        := Number_Dimensions (DT);
       Bounds_Size : ULL;
       Bounds_MD   : constant Metadata_T :=
-        Create_Bounds_Type_Data (DT, Bounds_Size);
+        Create_Bounds_Type_Data (GT, Bounds_Size);
       P_Bounds_MD : constant Metadata_T := Create_Pointer_To (Bounds_MD);
-      Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
-      P_Comp_MD   : Metadata_T;
+      --  GDB expects P_ARRAY to have type pointer-to-array.
+      P_Comp_MD   : constant Metadata_T := Create_Pointer_To (Array_Type);
       Field_MDs   : Metadata_Array (1 .. 2);
       Rec_Align   : Nat                 := Thin_Pointer_Size;
       Offset      : ULL                 := 0;
       Idx         : Nat                 := 1;
-      Ranges      : Metadata_Array (0 .. Ndim - 1);
       Ok          : Boolean;
 
    begin
-      --  If we can't make data for the component type, we can't make
-      --  data for the fat pointer.
-
-      if No (Comp_MD) then
-         return No_Metadata_T;
-      end if;
-
-      --  GDB expects P_ARRAY to have type pointer-to-array.  The
-      --  bounds here do not matter, but it's important that the
-      --  number of bounds match the type.
-      for J in 0 .. Ndim - 1 loop
-         Ranges (J) := DI_Builder_Get_Or_Create_Subrange (DI_Builder, 0, 0);
-      end loop;
-      P_Comp_MD := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T, "",
-                                                No_Metadata_T, 0, 0, Align,
-                                                Comp_MD, No_Metadata_T,
-                                                Ranges);
-      P_Comp_MD := Create_Pointer_To (P_Comp_MD);
 
       --  Add fields for pointers to bounds and component and create debug
       --  data for that structure.
@@ -934,6 +919,41 @@ package body GNATLLVM.DebugInfo is
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
+
+   end Create_Fat_Pointer_Type_Data_From_Array;
+
+   ----------------------------------
+   -- Create_Fat_Pointer_Type_Data --
+   ----------------------------------
+
+   function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T is
+      DT          : constant GL_Type    := Full_Designated_GL_Type (GT);
+      CT          : constant GL_Type    := Full_Component_GL_Type (DT);
+      Align       : constant Nat        := Thin_Pointer_Size;
+      Ndim        : constant Nat        := Number_Dimensions (DT);
+      Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
+      P_Comp_MD   : Metadata_T;
+      Ranges      : Metadata_Array (0 .. Ndim - 1);
+
+   begin
+      --  If we can't make data for the component type, we can't make
+      --  data for the fat pointer.
+
+      if No (Comp_MD) then
+         return No_Metadata_T;
+      end if;
+
+      --  The bounds here do not matter, but it's important that the
+      --  number of bounds match the type.
+      for J in 0 .. Ndim - 1 loop
+         Ranges (J) := DI_Builder_Get_Or_Create_Subrange (DI_Builder, 0, 0);
+      end loop;
+      P_Comp_MD := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T, "",
+                                                No_Metadata_T, 0, 0, Align,
+                                                Comp_MD, No_Metadata_T,
+                                                Ranges);
+
+      return Create_Fat_Pointer_Type_Data_From_Array (DT, P_Comp_MD);
 
    end Create_Fat_Pointer_Type_Data;
 
@@ -1511,6 +1531,9 @@ package body GNATLLVM.DebugInfo is
       elsif R = Thin_Pointer then
          return MD;
 
+      elsif R = Fat_Pointer then
+         return Create_Fat_Pointer_Type_Data_From_Array (GT, MD);
+
       --  Handle bounds and bounds and data relationships, but don't deal
       --  with PATs because we can't easily get the bounds and the info
       --  wouldn't be correct anyway.
@@ -1726,6 +1749,10 @@ package body GNATLLVM.DebugInfo is
                           (V, Var_Data, Empty_DI_Expr,
                            Create_Location (E), Get_Insert_Block));
             end if;
+         elsif Relationship (V) = Fat_Pointer then
+            Discard (DI_Builder_Insert_Dbg_Value_At_End
+              (V, Var_Data, Empty_DI_Expr,
+               Create_Location (E), Get_Insert_Block));
          else
             Discard (DI_Builder_Insert_Declare_At_End
                        (V, Var_Data, Empty_DI_Expr,

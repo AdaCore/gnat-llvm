@@ -640,7 +640,7 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Null_Statement =>
-            null;
+            Emit_Null_Statement (N);
 
          when N_Label =>
             Discard (Enter_Block_With_Node (N));

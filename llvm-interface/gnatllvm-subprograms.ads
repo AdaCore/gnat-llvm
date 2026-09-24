@@ -293,6 +293,9 @@ package GNATLLVM.Subprograms is
    --  Called at end of compilation to add functions to the module for which
    --  we haven't emitted a body.
 
+   procedure Emit_Null_Statement (N : N_Null_Statement_Id);
+   --  Generate code for a null statement.
+
    Current_Subp             : Opt_Subprogram_Kind_Id  := Empty;
    --  The spec entity for the subprogram currently being compiled
 

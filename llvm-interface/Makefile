@@ -315,13 +315,10 @@ gnatlib-bc:
 	@cd $(RTSOBJ)/bc && llvm-link $(subst .o,.bc,$(GNATRTL_TASKING_OBJS)) -o=libgnarl.bc-tmp
 	@cd $(RTSOBJ)/bc && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
 
-# Clang 16 complains about a missing function declaration in raise-gcc.c
-# (eng/toolchain/gnat-llvm#5). Until we have a proper fix, disable the warning
-# when building the runtime.
 quicklib: $(RTSDIR) $(LIBEXEC_DIR)
 	PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
-	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
+	  -XCFLAGS="$(CFLAGS) -I$(LLVM_INCLUDE_DIR)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND) -XLIBRARY_VERSION=$(LIBRARY_VERSION)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali

@@ -1544,4 +1544,28 @@ package body GNATLLVM.Wrapper is
                                       Unique_Id & ASCII.NUL);
    end DI_Create_Struct_Type;
 
+   --------------------------
+   -- DI_Create_Enumerator --
+   --------------------------
+
+   function DI_Create_Enumerator (Name : String; Value : Uint)
+     return Metadata_T
+   is
+      function Create_Enumerator (Builder     : DI_Builder_T;
+                                  Name        : String;
+                                  Is_Negative : LLVM_Bool;
+                                  Num_Words   : unsigned;
+                                  Words       : access uint64_t)
+        return Metadata_T
+        with Import => True,
+             Convention => C,
+             External_Name => "Create_Enumerator";
+
+      Words : Word_Array := UI_To_Words (abs Value);
+   begin
+      return Create_Enumerator (DI_Builder, Name & ASCII.NUL,
+                                Boolean'Pos (Value < 0),
+                                Words'Length, Words (Words'First)'Access);
+   end DI_Create_Enumerator;
+
 end GNATLLVM.Wrapper;

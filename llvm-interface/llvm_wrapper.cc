@@ -1723,6 +1723,21 @@ extern "C" Metadata *Constant_As_Metadata(LLVMContext *Context,
   return MDHelper->createConstant(ConstantInt::get(*Context, Result));
 }
 
+extern "C" Metadata *Create_Enumerator(LLVMDIBuilderRef Builder,
+                                       const char *Name, bool IsNegative,
+                                       unsigned NumWords,
+                                       const uint64_t Words[]) {
+  auto Value = APInt(NumWords * 64, {Words, NumWords});
+  // We know the words represent a positive value.  So, if the sign
+  // bit is set, we need some extra precision.
+  if (Value.isSignBitSet())
+    Value.zext(Value.getBitWidth() + 1);
+  if (IsNegative)
+    Value.negate();
+  return unwrap(Builder)->createEnumerator({Name, strlen(Name)},
+                                           APSInt(Value, !IsNegative));
+}
+
 extern "C" MDNode *Create_Binary_Fixed_Point_Type(
     LLVMDIBuilderRef Builder, const char *Name, const char *FullName,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Scope, uint64_t Size,

@@ -143,6 +143,9 @@ include:
       stage: test-ccg
       anod-args: run test_acats_ccg_optimized
       generic-anod-ci-args: --add-dep eng/toolchain/acats
+  - component: $CI_SERVER_FQDN/it/gitlab-templates/gitleaks@~latest
+    inputs:
+      stage: check
 
 # Additional customization
 

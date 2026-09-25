@@ -44,7 +44,7 @@ To build GNAT LLVM from sources, follow these steps:
 
   Note that there's no need to regenerate the bindings unless you change LLVM.
 
-- Install (and put in your PATH) a recent GNAT.
+- Install a recent GNAT (and put it in your PATH).
 
 - Install LLVM and Clang 21.1.x
 
@@ -52,9 +52,9 @@ To build GNAT LLVM from sources, follow these steps:
   package installed via e.g. `brew install llvm` on macOS or `sudo apt-get
   install llvm-dev` on Ubuntu. You can also build LLVM yourself with the options
   that suit your needs. You may want to use the lightly patched version that we
-  maintain at https://github.com/AdaCore/llvm-project. After
-  installing/building, make sure the LLVM bin directory containing `llvm-config`
-  and `clang` is in your `PATH`.
+  maintain at https://github.com/AdaCore/llvm-project. GNAT LLVM checks for the
+  presence of our patches at build time. After installing/building, make sure
+  the LLVM bin directory containing `llvm-config` and `clang` is in your `PATH`.
 
   Alternatively, you can invoke make with an environment variable named 
   `LLVM_CONFIG` pointing to your `llvm-config` binary, this way the LLVM you
@@ -67,12 +67,6 @@ To build GNAT LLVM from sources, follow these steps:
   version >= 3.20 in your path:
 
       make llvm
-
-  Note that there's currently a bug in LLVM's aliasing handling. We check for it
-  and generate slightly pessimized code in that case, but a patch to be applied
-  to LLVM's `lib/Analyze` directory is in the file
-  `llvm/patches/LLVMStructTBAAPatch.diff`; our LLVM repository mentioned above
-  already contains this patch.
 
 - Finally build GNAT LLVM:
 

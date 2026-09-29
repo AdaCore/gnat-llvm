@@ -1237,17 +1237,19 @@ package body GNATLLVM.Wrapper is
    function Constant_As_Metadata (U : Uint) return Metadata_T
    is
       function Constant_As_Metadata
-         (Ctx       : Context_T;
-          Builder    : MD_Builder_T;
-          Num_Words : unsigned;
-          Words     : access uint64_t) return Metadata_T
-      with Import => True,
-         Convention => C,
-         External_Name => "Constant_As_Metadata";
+        (Ctx         : Context_T;
+         Builder     : MD_Builder_T;
+         Is_Negative : LLVM_Bool;
+         Num_Words   : unsigned;
+         Words       : access uint64_t) return Metadata_T
+        with Import => True,
+             Convention => C,
+             External_Name => "Constant_As_Metadata";
 
-      Words : Word_Array := UI_To_Words (U);
+      Words : Word_Array := UI_To_Words (abs U);
    begin
       return Constant_As_Metadata (Get_Global_Context, MD_Builder,
+                                   Boolean'Pos (U < 0),
                                    Words'Length, Words (Words'First)'Access);
    end Constant_As_Metadata;
 

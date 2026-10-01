@@ -1710,10 +1710,16 @@ extern "C" MDNode *Create_Array_Type_With_Name(
 }
 
 extern "C" Metadata *Constant_As_Metadata(LLVMContext *Context,
-                                          MDBuilder *MDHelper,
+                                          MDBuilder *MDHelper, bool IsNegative,
                                           unsigned NumWords,
                                           const uint64_t Words[]) {
   auto Result = APInt(NumWords * 64, {Words, NumWords});
+  // We know the words represent a positive value.  So, if the sign
+  // bit is set, we need some extra precision.
+  if (Result.isSignBitSet())
+    Result.zext(Result.getBitWidth() + 1);
+  if (IsNegative)
+    Result.negate();
   return MDHelper->createConstant(ConstantInt::get(*Context, Result));
 }
 

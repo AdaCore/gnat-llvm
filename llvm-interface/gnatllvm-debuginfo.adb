@@ -1463,13 +1463,9 @@ package body GNATLLVM.DebugInfo is
                         declare
                            UI  : constant Uint       :=
                              Enumeration_Rep (Member);
-                           Val : constant LLI        :=
-                             Const_Int_Get_S_Ext_Value
-                                (Const_Int (Int_Ty (Uint_64), UI));
                            MD  : constant Metadata_T :=
                              DI_Create_Enumerator
-                               (Get_Unqualified_Name (Member), Val,
-                                UI >= 0);
+                               (Get_Unqualified_Name (Member), UI);
 
                         begin
                            Member_Table.Append (MD);

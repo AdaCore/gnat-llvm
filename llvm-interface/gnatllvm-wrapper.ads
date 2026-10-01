@@ -846,4 +846,10 @@ package GNATLLVM.Wrapper is
      with Import => True, Convention => C,
           External_Name => "Create_Expression_With_Variables";
 
+   function DI_Create_Enumerator (Name : String; Value : Uint)
+     return Metadata_T
+     with Post => Present (DI_Create_Enumerator'Result);
+   --  A wrapper for an LLVM DIBuilder method to create a new
+   --  enumerator.
+
 end GNATLLVM.Wrapper;

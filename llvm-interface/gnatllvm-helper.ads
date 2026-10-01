@@ -385,13 +385,6 @@ package GNATLLVM.Helper is
     with Pre  => Present (File) and then Present (C_Type),
          Post => Present (DI_Create_Bit_Field_Member_Type'Result);
 
-   function DI_Create_Enumerator
-     (Name : String; Value : LLI; Is_Unsigned : Boolean) return Metadata_T
-   is
-     (DI_Create_Enumerator (DI_Builder, Name, Name'Length, int64_t (Value),
-                            Is_Unsigned))
-     with Post => Present (DI_Create_Enumerator'Result);
-
    function DI_Create_Global_Variable_Expression
      (Scope         : Metadata_T;
       Name          : String;

@@ -331,7 +331,7 @@ package body GNATLLVM.DebugInfo is
       --  If we're emitting debug info, set up everything we need to do  so.
 
       if Emit_Debug_Info then
-         Add_Debug_Flags (Module);
+         Add_Debug_Flags (Module, Dwarf_Version);
          DI_Builder         := Create_DI_Builder (Module);
          Debug_Compile_Unit :=
            DI_Create_Compile_Unit

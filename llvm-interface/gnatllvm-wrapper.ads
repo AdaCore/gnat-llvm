@@ -349,7 +349,8 @@ package GNATLLVM.Wrapper is
    --  Ptr_Err_Msg_Type for the optionally returned error message, and
    --  returning a Boolean which is true if an error occurred.
 
-   procedure Add_Debug_Flags (Module : Module_T)
+   procedure Add_Debug_Flags (Module  : Module_T;
+                              Version : uint32_t)
      with Import, Convention => C, External_Name => "Add_Debug_Flags";
 
    function Get_Float_From_Words_And_Exp

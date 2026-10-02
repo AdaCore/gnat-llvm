@@ -371,6 +371,9 @@ package GNATLLVM is
    --  means line number information and whether or not to emit full debug
    --  info, which includes information for local variables.
 
+   Dwarf_Version        : uint32_t := 4;
+   --  If emitting debug info, the DWARF version to use.
+
    Do_Stack_Check       : Boolean := False;
    --  If set, check for too-large allocation
 

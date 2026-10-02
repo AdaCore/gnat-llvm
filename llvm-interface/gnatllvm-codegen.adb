@@ -137,6 +137,8 @@ package body GNATLLVM.Codegen is
          Use_GNAT_Allocs := True;
       elsif S = "-gdwarf-aranges" then
          Switches.Append (new String'("-generate-arange-section"));
+      elsif S = "-gdwarf-5" then
+         Dwarf_Version := 5;
       elsif S = "-g"
         or else (Starts_With (S, "-g") and then not Starts_With (S, "-gnat"))
       then

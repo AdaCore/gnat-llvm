@@ -73,10 +73,10 @@ extern "C" Instruction *Get_Latest_Instruction(IRBuilder<> *bld) {
   return dyn_cast<Instruction>(&*--bld->GetInsertPoint());
 }
 
-extern "C" void Add_Debug_Flags(Module *TheModule) {
+extern "C" void Add_Debug_Flags(Module *TheModule, uint32_t version) {
   TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
                            DEBUG_METADATA_VERSION);
-  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
+  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", version);
 }
 
 extern "C" MDBuilder *Create_MDBuilder_In_Context(LLVMContext &Ctx) {

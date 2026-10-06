@@ -682,9 +682,9 @@ package body GNATLLVM.MDType is
       Space     : Nat := Address_Space) return MD_Type
    is
       (MD_Find ((Kind        => Pointer,
-                Related_Type => Elem_Type,
-                Count        => Space,
-                others       => <>)));
+                 Related_Type => Elem_Type,
+                 Count        => Space,
+                 others       => <>)));
 
    ----------------
    -- Array_Type --

@@ -694,6 +694,7 @@ package body GNATLLVM.MDType is
      (MD_Find ((Kind         => Array_Type,
                 Count        => Count,
                 Related_Type => Elem_Type,
+                Is_Volatile  => Is_Volatile (Elem_Type),
                 others       => <>)));
 
    -----------------------

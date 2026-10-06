@@ -1208,7 +1208,10 @@ package body GNATLLVM.GLType is
 
       --  For Padded data, use Insert_Value to make the padded version
 
-      elsif GTI.Kind = Padded and then Is_Loadable_Type (Result) then
+      elsif GTI.Kind = Padded
+        and then (Is_Loadable_Type (Result)
+                  or else (Is_Data (Result) and then Is_Constant (Result)))
+      then
          return Insert_Value (Get_Undef (GT), Get (Result, Data), 0);
 
       --  If we're truncating and we have data, that data has to have been

@@ -608,7 +608,7 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    function Is_Loadable_Type (V : GL_Value) return Boolean is
-     (Is_Data (V) or else Is_Loadable_Type (Related_Type (V)));
+     (Is_Loadable_Type (Related_Type (V)));
 
    ---------------------
    -- Element_Type_Of --

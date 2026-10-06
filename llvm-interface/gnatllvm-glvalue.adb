@@ -1531,16 +1531,18 @@ package body GNATLLVM.GLValue is
    function Const_Array
      (Elmts : GL_Value_Array; GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
-      Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
-      V      : GL_Value;
-      MD     : MD_Type;
+      Values   : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      Num_Elts : constant Nat := Elmts'Length;
+      V        : GL_Value;
+      MD       : MD_Type;
+      Array_MD : MD_Type;
       procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
                                                         Access_Value_Array);
    begin
       --  If some elements have been specified, we know the element type:
       --  it's the type of those elements.
 
-      if Elmts'Length /= 0 then
+      if Num_Elts /= 0 then
          MD := Type_Of (Elmts (Elmts'First));
 
       --  Otherwise, we start with the array type and remove a number of
@@ -1554,18 +1556,37 @@ package body GNATLLVM.GLValue is
          end loop;
       end if;
 
+      --  If the array has volatile components, reflect that in our MD_Type.
+      --  That's somewhat peculiar since constants aren't themselves
+      --  volatile, but we want to have consistent types.
+
+      if Has_Volatile_Components (GT) or else Has_Atomic_Components (GT) then
+         Make_Volatile (MD);
+      end if;
+
       --  Now copy in the types.
 
       for J in Elmts'Range loop
          Values (J) := +Elmts (J);
       end loop;
 
+      --  Now make the constant array. If the resulting type is volatile
+      --  or atomic, show that the MD_Type is too.
+
+      Array_MD := Array_Type (MD, Num_Elts);
+
+      if Number_Dimensions (GT) = Dims_Left
+        and then (Is_Volatile (GT) or else Is_Atomic (GT))
+      then
+         Make_Volatile (Array_MD);
+      end if;
+
       --  We have a kludge here in the case of making a string literal
       --  that's not in the source (e.g., for a filename) or when we're
       --  handling inner dimensions of a multi-dimensional array.
 
-      V := G (Const_Array (+MD, Values.all'Address, Values.all'Length),
-              GT, Array_Type (MD, Values.all'Length),
+      V := G (Const_Array (+MD, Values.all'Address, unsigned (Num_Elts)),
+              GT, Array_MD,
               (if   Number_Dimensions (GT) /= Dims_Left
                     or else GT = Any_Array_GL_Type
                then Unknown else Data));

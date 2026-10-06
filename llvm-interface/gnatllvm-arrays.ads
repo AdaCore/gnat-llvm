@@ -38,9 +38,11 @@ package GNATLLVM.Arrays is
 
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value
      with Post => Present (Get_Bound_Size'Result);
-   --  Get the size in bits of the Bounds part of array and data of GT,
-   --  taking into account both the size of the bounds and the alignment of
-   --  the bounds and GT.
+   function Get_Bound_Size_In_Bytes (GT : Array_Or_PAT_GL_Type) return GL_Value
+     with Post => Present (Get_Bound_Size_In_Bytes'Result);
+   --  Get the size of the Bounds part of array and data of GT, taking into
+   --  account both the size of the bounds and the alignment of the bounds
+   --  and GT.
 
    function Has_Bounds_In_Fat_Pointer
      (GT : Array_Or_PAT_GL_Type) return Boolean

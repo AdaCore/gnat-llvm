@@ -160,6 +160,7 @@ package body GNATLLVM.Types is
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
       with function Get_Type_Size (MD : MD_Type) return GL_Value;
+      with function Get_Bound_Size (GT : GL_Type) return GL_Value;
       with function From_Bits (V : GL_Value) return GL_Value;
       with function  "-" (V1, V2 : Result) return Result;
    package Size is
@@ -1256,8 +1257,7 @@ package body GNATLLVM.Types is
 
             if Relationship (V) = Bounds_And_Data then
                Our_Size :=
-                 Our_Size -
-                 From_Const (From_Bits (Get_Bound_Size (Related_Type (V))));
+                 Our_Size - From_Const (Get_Bound_Size (Related_Type (V)));
             end if;
 
             return Our_Size;
@@ -1306,6 +1306,7 @@ package body GNATLLVM.Types is
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
                 Get_Type_Size           => Get_Type_Size,
+                Get_Bound_Size          => Get_Bound_Size,
                 From_Bits               => Ident,
                 "-"                     => "-");
 
@@ -1323,8 +1324,9 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size_In_Bytes,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size_In_Bytes,
                 Get_Array_Type_Size     => Get_Array_Type_Size_In_Bytes,
-                From_Bits               => To_Bytes,
                 Get_Type_Size           => Get_Type_Size_In_Bytes,
+                Get_Bound_Size          => Get_Bound_Size_In_Bytes,
+                From_Bits               => To_Bytes,
                 "-"                     => "-");
 
    function Get_Type_Size_In_Bytes
@@ -1341,8 +1343,9 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
-                From_Bits               => Ident,
                 Get_Type_Size           => Get_Type_Size,
+                Get_Bound_Size          => Get_Bound_Size,
+                From_Bits               => Ident,
                 "-"                     => "-");
 
    function Get_Type_Size
@@ -1359,8 +1362,9 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
-                From_Bits               => Ident,
                 Get_Type_Size           => Get_Type_Size,
+                Get_Bound_Size          => Get_Bound_Size,
+                From_Bits               => Ident,
                 "-"                     => "-");
 
    function Get_Type_Size
@@ -1435,9 +1439,9 @@ package body GNATLLVM.Types is
       --  for unconstrained itself.
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT) then
-         Size := Align_To_In_Bytes (Size + To_Bytes (Get_Bound_Size (GT)),
-                                 To_Bytes (Get_Type_Alignment (GT)),
-                                 To_Bytes (Get_Bound_Alignment (GT)));
+         Size := Align_To_In_Bytes (Size + Get_Bound_Size_In_Bytes (GT),
+                                    To_Bytes (Get_Type_Alignment (GT)),
+                                    To_Bytes (Get_Bound_Alignment (GT)));
       end if;
 
       return Size;
@@ -1465,11 +1469,11 @@ package body GNATLLVM.Types is
       return Nat'Max (Nat'Max (GT_Align, Bound_Align), E_Align);
    end Get_Alloc_Alignment;
 
-   ------------------
-   -- Compute_Size --
-   ------------------
+   ---------------------------
+   -- Compute_Size_In_Bytes --
+   ---------------------------
 
-   function Compute_Size
+   function Compute_Size_In_Bytes
      (Left_GT, Right_GT       : GL_Type;
       Left_Value, Right_Value : GL_Value;
       For_Assignment          : Boolean := False) return GL_Value
@@ -1531,7 +1535,7 @@ package body GNATLLVM.Types is
 
       return Get_Type_Size_In_Bytes (Size_GT, Size_Value,
                                      No_Padding => not Copy_Padding);
-   end Compute_Size;
+   end Compute_Size_In_Bytes;
 
    ------------------------------
    -- Get_Type_Size_Complexity --
@@ -1607,14 +1611,14 @@ package body GNATLLVM.Types is
          when Attribute_Max_Size_In_Storage_Elements =>
             if Known_Esize (Our_E) and then Is_Static_SO_Ref (Esize (Our_E))
             then
-               Ret := Esize (Our_E) / BPU;
+               Ret := Esize (Our_E);
 
                if Is_Unconstrained_Array (TE) then
                   Ret := Ret + UI_From_GL_Value
-                    (To_Bytes (Get_Bound_Size (Default_GL_Type (TE))));
+                    (Get_Bound_Size (Default_GL_Type (TE)));
                end if;
 
-               return Ret;
+               return Ret / BPU;
             end if;
 
          when Attribute_Descriptor_Size =>

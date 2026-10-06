@@ -1809,8 +1809,8 @@ package body GNATLLVM.Exprs is
       then
          declare
             Size : constant GL_Value :=
-              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
-                            For_Assignment => True);
+              Compute_Size_In_Bytes (Dest_GT, Related_Type (Src), Dest, Src,
+                                     For_Assignment => True);
 
          begin
             if Size /= 0 then
@@ -1856,8 +1856,8 @@ package body GNATLLVM.Exprs is
             Need_Volatile    : constant Boolean :=
               Is_Volatile (Src) or else Is_Volatile (Dest);
             Size             : GL_Value         :=
-              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
-                            For_Assignment => True);
+              Compute_Size_In_Bytes (Dest_GT, Related_Type (Src), Dest, Src,
+                                     For_Assignment => True);
             Mem_Src, Mem_Dst : GL_Value;
 
          begin
@@ -1879,7 +1879,7 @@ package body GNATLLVM.Exprs is
 
             if Src_R = Reference_To_Bounds_And_Data then
                pragma Assert (Dest_R = Src_R);
-               Size := Size + Get_Bound_Size (Related_Type (Src));
+               Size := Size + Get_Bound_Size_In_Bytes (Related_Type (Src));
             end if;
 
             --  Compute the size in bytes and any pointer casts

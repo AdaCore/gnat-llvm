@@ -143,8 +143,9 @@ package body GNATLLVM.Conditionals is
             LHS_Val : constant GL_Value := To_Primitive (Emit_LValue (LHS));
             RHS_Val : constant GL_Value := To_Primitive (Emit_LValue (RHS));
             Size    : constant GL_Value :=
-              Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
-                            LHS_Val, RHS_Val);
+              Compute_Size_In_Bytes (Related_Type (LHS_Val),
+                                     Related_Type (RHS_Val), LHS_Val,
+                                     RHS_Val);
             Memcmp  : constant GL_Value :=
               (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                else Call (Get_Memory_Compare_Fn,
@@ -336,8 +337,9 @@ package body GNATLLVM.Conditionals is
                --  about testing for that case, but do check for constant 0.
 
                Size   : constant GL_Value :=
-                 Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
-                               LHS_Val, RHS_Val);
+                 Compute_Size_In_Bytes (Related_Type (LHS_Val),
+                                        Related_Type (RHS_Val), LHS_Val,
+                                        RHS_Val);
                Memcmp : constant GL_Value :=
                  (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                   else Call (Get_Memory_Compare_Fn,

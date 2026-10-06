@@ -970,6 +970,20 @@ package body GNATLLVM.Arrays is
                        Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
+   -----------------------------
+   -- Get_Bound_Size_In_Bytes --
+   -----------------------------
+
+   function Get_Bound_Size_In_Bytes
+     (GT : Array_Or_PAT_GL_Type) return GL_Value
+   is
+      MD : constant MD_Type := Create_Array_Bounds_Type (GT);
+   begin
+      return Align_To_In_Bytes (Get_Type_Size_In_Bytes (MD),
+                                To_Bytes (Get_Type_Alignment (MD)),
+                                To_Bytes (Get_Type_Alignment (GT)));
+   end Get_Bound_Size_In_Bytes;
+
    -------------------------
    -- Get_Bound_Alignment --
    -------------------------

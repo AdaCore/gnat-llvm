@@ -1088,7 +1088,9 @@ package body GNATLLVM.GLValue is
 
             elsif Our_R = Thin_Pointer then
                Result :=
-                 Ptr_To_Address_Type (V) - To_Bytes (Get_Bound_Size (GT));
+                 Ptr_To_Address_Type (V) -
+                 Convert (Get_Bound_Size_In_Bytes (GT), Address_GL_Type);
+
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -1115,7 +1117,9 @@ package body GNATLLVM.GLValue is
 
             elsif Our_R = Thin_Pointer then
                Result :=
-                 Ptr_To_Address_Type (V) - To_Bytes (Get_Bound_Size (GT));
+                 Ptr_To_Address_Type (V) -
+                 Convert (Get_Bound_Size_In_Bytes (GT), Address_GL_Type);
+
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);

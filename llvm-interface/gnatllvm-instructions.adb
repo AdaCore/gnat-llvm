@@ -1193,11 +1193,10 @@ package body GNATLLVM.Instructions is
    ---------------------------
 
    procedure Create_Lifetime_Start (Ptr, Size : GL_Value) is
-      Byte_Size : constant GL_Value :=
-        Convert (To_Bytes (Size), Int_64_GL_Type);
+      Our_Size : constant GL_Value := Convert (Size, Int_64_GL_Type);
 
    begin
-      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +Byte_Size));
+      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +Our_Size));
    end Create_Lifetime_Start;
 
    -------------------------
@@ -1205,11 +1204,10 @@ package body GNATLLVM.Instructions is
    -------------------------
 
    procedure Create_Lifetime_End (Ptr, Size : GL_Value) is
-      Byte_Size : constant GL_Value :=
-        Convert (To_Bytes (Size), Int_64_GL_Type);
+      Our_Size : constant GL_Value := Convert (Size, Int_64_GL_Type);
 
    begin
-      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +Byte_Size));
+      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +Our_Size));
    end Create_Lifetime_End;
 
    ----------------------------
@@ -1219,7 +1217,7 @@ package body GNATLLVM.Instructions is
    procedure Create_Invariant_Start
      (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
    is
-      Byte_Size : Value_T;
+      Our_Size : Value_T;
 
    begin
       --  If we don't have a 64-bit type, we can't make invariant lifetime
@@ -1229,11 +1227,10 @@ package body GNATLLVM.Instructions is
          return;
       end if;
 
-      Byte_Size := (if   Present (Size)
-                    then +Convert (To_Bytes (Size), Int_64_GL_Type)
-                    else No_Value_T);
+      Our_Size := (if   Present (Size) then +Convert (Size, Int_64_GL_Type)
+                   else No_Value_T);
 
-      Discard (Create_Invariant_Start (IR_Builder, +Ptr, Byte_Size));
+      Discard (Create_Invariant_Start (IR_Builder, +Ptr, Our_Size));
    end Create_Invariant_Start;
 
    ---------------------------

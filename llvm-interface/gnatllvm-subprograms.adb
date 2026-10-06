@@ -1342,7 +1342,7 @@ package body GNATLLVM.Subprograms is
                if not Has_Bounds_In_Fat_Pointer (GT) then
                   Create_Invariant_Start
                     (Get (LLVM_Param, Reference_To_Bounds),
-                     Get_Bound_Size (GT));
+                     Get_Bound_Size_In_Bytes (GT));
                end if;
 
                if Ekind (Param) = E_In_Parameter then

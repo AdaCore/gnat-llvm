@@ -1396,7 +1396,7 @@ package body GNATLLVM.Variables is
 
          if not Alloca_Smaller_Than (T, Elts, Min_Lifetime_Size) then
             declare
-               T_Size     : constant ULL := Get_Type_Size (T);
+               T_Size     : constant ULL := Get_Type_Size_In_Bytes (T);
                Num_Elts   : constant ULL :=
                  (if Present (Elts) then +Elts else 1);
                Alloc_Size : constant ULL := T_Size * Num_Elts;
@@ -2473,7 +2473,7 @@ package body GNATLLVM.Variables is
             Create_Invariant_Start (LLVM_Var,
                                     (if   Is_Dynamic_Size (Alloc_GT)
                                      then No_GL_Value
-                                     else Get_Type_Size (Alloc_GT)));
+                                     else Get_Type_Size_In_Bytes (Alloc_GT)));
          end if;
       end if;
 
@@ -2482,7 +2482,7 @@ package body GNATLLVM.Variables is
 
       if Relationship (LLVM_Var) = Thin_Pointer and then not Library_Level then
          Create_Invariant_Start (Get (LLVM_Var, Reference_To_Bounds),
-                                 Get_Bound_Size (GT));
+                                 Get_Bound_Size_In_Bytes (GT));
 
       --  If this is a constrained record, the discriminant values are
       --  invariant once we've set them. If this is a constant, we'll
@@ -2500,7 +2500,8 @@ package body GNATLLVM.Variables is
                if not Is_Bitfield (Ancestor_Field (Disc)) then
                   Create_Invariant_Start
                     (Record_Field_Offset (LLVM_Var, Disc),
-                     Get_Type_Size (Field_Type (Ancestor_Field (Disc))));
+                     Get_Type_Size_In_Bytes
+                       (Field_Type (Ancestor_Field (Disc))));
                end if;
 
                Next_Stored_Discriminant (Disc);

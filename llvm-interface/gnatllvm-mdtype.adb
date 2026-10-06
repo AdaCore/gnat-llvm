@@ -971,7 +971,7 @@ package body GNATLLVM.MDType is
    -- Make_Volatile --
    -------------------
 
-   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := False) is
+   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := True) is
    begin
       MD := Make_Volatile (MD, B);
    end Make_Volatile;

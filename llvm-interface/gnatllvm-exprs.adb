@@ -1835,7 +1835,7 @@ package body GNATLLVM.Exprs is
 
       elsif (No (E) or else (Is_Loadable_Type (Full_GL_Type (E))
                              and then Full_GL_Type (E) = Related_Type (Dest)))
-        and then (No (Value) or else Is_Loadable_Type (Value))
+        and then Is_Loadable_Type (Src_GT)
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));

@@ -218,7 +218,7 @@ package GNATLLVM.MDType is
 
    function Make_Volatile (MD : MD_Type; B : Boolean := True) return MD_Type
      with Pre => Present (MD), Post => Is_Volatile (Make_Volatile'Result) = B;
-   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := False)
+   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := True)
      with Pre => Present (MD), Post => Is_Volatile (MD) = B;
    --  Create a copy of MD that's marked as volatile
 

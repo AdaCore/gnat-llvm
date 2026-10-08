@@ -682,9 +682,9 @@ package body GNATLLVM.MDType is
       Space     : Nat := Address_Space) return MD_Type
    is
       (MD_Find ((Kind        => Pointer,
-                Related_Type => Elem_Type,
-                Count        => Space,
-                others       => <>)));
+                 Related_Type => Elem_Type,
+                 Count        => Space,
+                 others       => <>)));
 
    ----------------
    -- Array_Type --
@@ -694,6 +694,7 @@ package body GNATLLVM.MDType is
      (MD_Find ((Kind         => Array_Type,
                 Count        => Count,
                 Related_Type => Elem_Type,
+                Is_Volatile  => Is_Volatile (Elem_Type),
                 others       => <>)));
 
    -----------------------
@@ -971,7 +972,7 @@ package body GNATLLVM.MDType is
    -- Make_Volatile --
    -------------------
 
-   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := False) is
+   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := True) is
    begin
       MD := Make_Volatile (MD, B);
    end Make_Volatile;

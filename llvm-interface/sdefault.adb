@@ -63,11 +63,21 @@ package body Sdefault is
    -----------------------
 
    function Search_Dir_Prefix return String_Ptr is
+      Bareboard : constant Boolean :=
+        (Default_Target_Triple'Length >= 4)
+        and then
+          (Default_Target_Triple
+             (Default_Target_Triple'Last - 3 .. Default_Target_Triple'Last)
+           = "-elf");
    begin
-      return Relocate_Path ("/PREFIX",
-                            (if CCG then "/PREFIX/lib/"
-                             else "/PREFIX/lib/gnat-llvm/" &
-                                  Default_Target_Triple & "//"));
+      return
+        Relocate_Path
+          ("/PREFIX",
+           (if CCG
+            then "/PREFIX/lib/"
+            elsif Bareboard
+            then "/PREFIX/" & Default_Target_Triple & "/lib/gnat-llvm/"
+            else "/PREFIX/lib/gnat-llvm/" & Default_Target_Triple & "/"));
    end Search_Dir_Prefix;
 
    -----------------

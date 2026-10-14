@@ -863,8 +863,7 @@ package body GNATLLVM.Compile is
       then
          Result := Get_Value (Entity (N));
       else
-         Result :=
-           Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True);
+         Result := Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True);
 
          --  If we have an Undef as data, turn it into an undef reference.
          --  The normal handling of Get, allocating it as a variable, isn't

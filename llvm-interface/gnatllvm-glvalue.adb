@@ -1308,7 +1308,7 @@ package body GNATLLVM.GLValue is
       E     : Entity_Id := Empty;
       Align : Nat       := 0) return Nat
    is
-      GT_Align  : constant Nat := Get_Type_Alignment (Default_GL_Type (GT));
+      GT_Align  : constant Nat := Get_Type_Alignment (GT);
       E_Align   : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
          then To_Bits (+Alignment (E)) else BPU);

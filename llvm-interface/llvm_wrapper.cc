@@ -1717,7 +1717,7 @@ extern "C" Metadata *Constant_As_Metadata(LLVMContext *Context,
   // We know the words represent a positive value.  So, if the sign
   // bit is set, we need some extra precision.
   if (Result.isSignBitSet())
-    Result.zext(Result.getBitWidth() + 1);
+    Result = Result.zext(Result.getBitWidth() + 1);
   if (IsNegative)
     Result.negate();
   return MDHelper->createConstant(ConstantInt::get(*Context, Result));
@@ -1731,7 +1731,7 @@ extern "C" Metadata *Create_Enumerator(LLVMDIBuilderRef Builder,
   // We know the words represent a positive value.  So, if the sign
   // bit is set, we need some extra precision.
   if (Value.isSignBitSet())
-    Value.zext(Value.getBitWidth() + 1);
+    Value = Value.zext(Value.getBitWidth() + 1);
   if (IsNegative)
     Value.negate();
   return unwrap(Builder)->createEnumerator({Name, strlen(Name)},

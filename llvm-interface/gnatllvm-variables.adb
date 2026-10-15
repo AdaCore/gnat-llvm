@@ -1002,7 +1002,7 @@ package body GNATLLVM.Variables is
               --  If either side needs an elab proc, we do
 
               or else (Do_Overflow_Check (N)
-                         and then Test_Emit (N, Overflowed'Access))
+                      and then Test_Emit (N, Overflowed'Access))
               --  If we're to check for overflow, this needs an elab proc
               --  if the operation overflows.
 
@@ -1022,7 +1022,7 @@ package body GNATLLVM.Variables is
             return Is_No_Elab_Needed (Right_Opnd (N), Not_Symbolic,
                                       Restrict_Types)
               and then (not Do_Overflow_Check (N)
-                         or else not Test_Emit (N, Overflowed'Access));
+                        or else not Test_Emit (N, Overflowed'Access));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion

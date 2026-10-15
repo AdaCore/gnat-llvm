@@ -281,7 +281,7 @@ endif
 
 gnatlib: build
 	$(RMDIR) $(RTS)
-	$(MAKE) CFLAGS="$(CFLAGS) -g" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
+	$(MAKE) CFLAGS="$(CFLAGS) -g" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" LN_S="cp -p" quicklib
 
 gnatlib-automated: build-opt
 	$(RMDIR) $(RTS)

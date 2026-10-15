@@ -2819,7 +2819,7 @@ package body GNATLLVM.Subprograms is
                --  If we have a static address, we can put it in the
                --  initializer.
 
-               if Is_Static_Address (Addr_Expr) then
+               if Is_Static_Or_Address (Addr_Expr) then
                   if No (Addr) then
                      Addr := Emit_Expression (Addr_Expr);
                   end if;

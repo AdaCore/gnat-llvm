@@ -211,11 +211,11 @@ package body GNATLLVM.Variables is
    --  Return True iff Convert_Constant can convert V to GT. If Not_Symbolic,
    --  the result must not be a symbolic constant
 
-   function Is_Entity_Static_Address
+   function Is_Entity_Static_Or_Address
      (E : Evaluable_Kind_Id; Not_Symbolic : Boolean := False) return Boolean;
-   --  Return True if E represents an address that can computed statically.
-   --  If Not_Symbolic is True, only return if this address is a constant
-   --  integer (rare).
+   --  Return True if E represents a constant or address that can be
+   --  computed statically.  If Not_Symbolic is True, only return True if
+   --  this address is a constant).
 
    function Is_No_Elab_Needed_Internal
      (N              : N_Subexpr_Id;
@@ -247,6 +247,11 @@ package body GNATLLVM.Variables is
    --  result and any emitted code. F is a function to be applied to the
    --  result of Emit_Expression before discarding it and its return is the
    --  return of this function.
+   function Test_Emit_For_Convert
+     (N : N_Subexpr_Id; GT : GL_Type) return Boolean;
+   --  Emit N using Emit_Expression, but ignore overflows and discard the
+   --  result and any emitted code. See if the result is an aggregate
+   --  constant that can be converted to GT. Return whether it can or not.
 
    function Is_Static_Location (N : N_Subexpr_Id) return Boolean;
    --  Return True if N represent an object with constant address
@@ -568,6 +573,42 @@ package body GNATLLVM.Variables is
       return Result;
    end Test_Emit;
 
+   ---------------------------
+   -- Test_Emit_For_Convert --
+   ---------------------------
+
+   function Test_Emit_For_Convert
+     (N : N_Subexpr_Id; GT : GL_Type) return Boolean
+   is
+      Save_Fn  : constant GL_Value   := Current_Func;
+      Position : constant Position_T :=
+        (if   Present (Current_Func) then Get_Current_Position
+         else No_Position_T);
+      Result   : Boolean;
+
+   begin
+      --  Create a new function and add it to the current module (so we can
+      --  delete it) by setting Is_Builtin to be True. Then create a new
+      --  basic block, position to it, emit the code, perform the test, and
+      --  pop back to the previous state.
+
+      Current_Func :=
+        Add_Function ("__dummy", Fn_Ty ((1 .. 0 => <>), Void_Ty),
+                      Void_GL_Type, Is_Builtin => True);
+      Position_Builder_At_End (Create_Basic_Block ("entry"));
+      Push_Suppress_Overflow;
+      Result := Can_Convert_Aggregate_Constant (Emit_Expression (N), GT);
+      Pop_Suppress_Overflow;
+      Delete_Function (+Current_Func);
+      Current_Func := Save_Fn;
+
+      if Present (Position) then
+         Set_Current_Position (Position);
+      end if;
+
+      return Result;
+   end Test_Emit_For_Convert;
+
    ------------------------
    -- Is_Static_Location --
    ------------------------
@@ -656,7 +697,7 @@ package body GNATLLVM.Variables is
          --  static location.
 
          when N_Explicit_Dereference =>
-            return Is_Static_Address (Prefix (N));
+            return Is_Static_Or_Address (Prefix (N));
 
          when others =>
             return False;
@@ -696,7 +737,7 @@ package body GNATLLVM.Variables is
       --  If we have an address clause, see if the address is static
 
       elsif Present (Address_Clause (E)) then
-         return Is_Static_Address (Expression (Address_Clause (E)));
+         return Is_Static_Or_Address (Expression (Address_Clause (E)));
 
       --  If it's a subprogram with no activation record, it's always at a
       --  static location.
@@ -717,18 +758,18 @@ package body GNATLLVM.Variables is
 
    end Is_Entity_Static_Location;
 
-   -----------------------
-   -- Is_Static_Address --
-   -----------------------
+   --------------------------
+   -- Is_Static_Or_Address --
+   --------------------------
 
-   function Is_Static_Address
+   function Is_Static_Or_Address
      (N : N_Subexpr_Id; Not_Symbolic : Boolean := False) return Boolean is
    begin
       case Nkind (N) is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            return Is_Static_Address (Expression (N), Not_Symbolic);
+            return Is_Static_Or_Address (Expression (N), Not_Symbolic);
 
          when N_Attribute_Reference =>
             return not Not_Symbolic
@@ -740,15 +781,14 @@ package body GNATLLVM.Variables is
 
          when N_Entity_Name =>
             return not Not_Symbolic
-              and then Is_Entity_Static_Address (Entity (N));
+              and then Is_Entity_Static_Or_Address (Entity (N));
 
          when others =>
             return Compile_Time_Known_Value (N)
               and then (not Not_Symbolic
-                          or else Test_Emit (N, Is_A_Constant_Int'Access)
-                          or else Test_Emit (N, Is_A_Constant_FP'Access));
+                        or else Test_Emit (N, Is_A_Constant_Int_Or_FP'Access));
       end case;
-   end Is_Static_Address;
+   end Is_Static_Or_Address;
 
    --------------------
    -- Static_Address --
@@ -779,18 +819,18 @@ package body GNATLLVM.Variables is
       end case;
    end Static_Address;
 
-   ------------------------------
-   -- Is_Entity_Static_Address --
-   ------------------------------
+   ---------------------------------
+   -- Is_Entity_Static_Or_Address --
+   ---------------------------------
 
-   function Is_Entity_Static_Address
+   function Is_Entity_Static_Or_Address
      (E : Evaluable_Kind_Id; Not_Symbolic : Boolean := False) return Boolean
    is
       CV : constant Opt_N_Subexpr_Id := Initialized_Value (E);
    begin
-      return Present (CV) and then Is_Static_Address (CV, Not_Symbolic);
+      return Present (CV) and then Is_Static_Or_Address (CV, Not_Symbolic);
 
-   end Is_Entity_Static_Address;
+   end Is_Entity_Static_Or_Address;
 
    -----------------------
    -- Initialized_Value --
@@ -1002,7 +1042,7 @@ package body GNATLLVM.Variables is
               --  If either side needs an elab proc, we do
 
               or else (Do_Overflow_Check (N)
-                         and then Test_Emit (N, Overflowed'Access))
+                      and then Test_Emit (N, Overflowed'Access))
               --  If we're to check for overflow, this needs an elab proc
               --  if the operation overflows.
 
@@ -1022,7 +1062,7 @@ package body GNATLLVM.Variables is
             return Is_No_Elab_Needed (Right_Opnd (N), Not_Symbolic,
                                       Restrict_Types)
               and then (not Do_Overflow_Check (N)
-                         or else not Test_Emit (N, Overflowed'Access));
+                        or else not Test_Emit (N, Overflowed'Access));
 
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
@@ -1033,18 +1073,17 @@ package body GNATLLVM.Variables is
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (GT)
-                          or else Type_Of (GT) = Address_MD
-                          or else Test_Emit (Expression (N),
-                                             Is_A_Constant_Int'Access)
-                          or else Test_Emit (Expression (N),
-                                             Is_A_Constant_FP'Access))
+                        or else Type_Of (GT) = Address_MD
+                        or else Test_Emit (Expression (N),
+                                           Is_A_Constant_Int_Or_FP'Access)
+                        or else Test_Emit_For_Convert (Expression (N), GT))
 
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
 
               and then (Nkind (N) /= N_Type_Conversion
-                          or else not Do_Overflow_Check (N)
-                          or else not Test_Emit (N, Overflowed'Access));
+                        or else not Do_Overflow_Check (N)
+                        or else not Test_Emit (N, Overflowed'Access));
             --  If testing for overflow, must not overflow
 
          when N_Attribute_Reference =>
@@ -1095,7 +1134,7 @@ package body GNATLLVM.Variables is
                   | Attribute_Unrestricted_Access | Attribute_Address
                   | Attribute_Code_Address | Attribute_Pool_Address =>
 
-                  return Is_Static_Address (N, Not_Symbolic);
+                  return Is_Static_Or_Address (N, Not_Symbolic);
 
                when Attribute_Passed_By_Reference
                   | Attribute_Mechanism_Code | Attribute_Null_Parameter =>
@@ -1163,7 +1202,7 @@ package body GNATLLVM.Variables is
             --  An address that we can evaluate or other compile time
             --  known value, we don't need any elaboration.
 
-            return Is_Static_Address (N, Not_Symbolic);
+            return Is_Static_Or_Address (N, Not_Symbolic);
       end case;
 
    end Is_No_Elab_Needed_Internal;
@@ -1771,7 +1810,7 @@ package body GNATLLVM.Variables is
       Addr_Expr       : constant Opt_N_Subexpr_Id :=
         (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       Has_Static_Addr : constant Boolean          :=
-        Has_Addr and then Is_Static_Address (Addr_Expr);
+        Has_Addr and then Is_Static_Or_Address (Addr_Expr);
       Nonnative       : constant Boolean          := Is_Nonnative_Type (GT);
       Needs_Alloc     : constant Boolean          :=
         not Has_Addr and then Nonnative;
@@ -1980,7 +2019,7 @@ package body GNATLLVM.Variables is
       --  True if variable is not defined in this unit
 
       Has_Static_Addr : constant Boolean                    :=
-        Has_Addr and then Is_Static_Address (Addr_Expr);
+        Has_Addr and then Is_Static_Or_Address (Addr_Expr);
       --  True if variable has an address clause that's static
 
       Needs_Alloc     : constant Boolean                    :=

@@ -104,11 +104,11 @@ package GNATLLVM.Variables is
       Elts   : GL_Value := No_GL_Value)
      with Pre => Present (Alloca) and then Present (T);
 
-   function Is_Static_Address
+   function Is_Static_Or_Address
      (N : N_Subexpr_Id; Not_Symbolic : Boolean := False) return Boolean;
-   --  Return True if N represents an address that can computed statically.
-   --  If Not_Symbolic is True, only return if this address is a constant
-   --  integer (rare).
+   --  Return True if N represents a constant or an address that can be
+   --  computed statically.  If Not_Symbolic is True, only return if N is a
+   --  constant.
 
    function Static_Address (N : N_Subexpr_Id) return GL_Value;
    --  Return the LLVM representation of the address represented by N, or

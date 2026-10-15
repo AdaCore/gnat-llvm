@@ -261,7 +261,7 @@ Create_TBAA_Struct_Type_Node(LLVMContext &ctx, MDBuilder *MDHelper,
   Ops[0] = parent;
   Ops[1] = MDHelper->createConstant(ConstantInt::get(Int64, size));
   Ops[2] = MDHelper->createString(name);
-  for (unsigned i = 0; i < num_fields; i++) {
+  for (int i = 0; i < num_fields; i++) {
     Ops[3 + i * 3] = fields[i];
     Ops[3 + i * 3 + 1] =
         MDHelper->createConstant(ConstantInt::get(Int64, offsets[i]));
@@ -278,7 +278,7 @@ extern "C" MDNode *Create_TBAA_Struct_Node(LLVMContext &ctx,
                                            uint64_t sizes[]) {
   Type *Int64 = Type::getInt64Ty(ctx);
   SmallVector<Metadata *, 8> Ops(num_fields * 3);
-  for (unsigned i = 0; i < num_fields; i++) {
+  for (int i = 0; i < num_fields; i++) {
     Ops[i * 3] = MDHelper->createConstant(ConstantInt::get(Int64, offsets[i]));
     Ops[i * 3 + 1] =
         MDHelper->createConstant(ConstantInt::get(Int64, sizes[i]));

@@ -1002,21 +1002,21 @@ extern "C" void Insert_At_Block_End(Instruction *I, BasicBlock *BB,
 }
 
 extern "C" AllocaInst *Insert_Alloca_Before(Type *Ty, Instruction *Before) {
-  auto Inst = new AllocaInst(Ty, 0, "", Before);
+  auto Inst = new AllocaInst(Ty, 0, "", Before->getIterator());
   Inst->setDebugLoc(Before->getDebugLoc());
   return Inst;
 }
 
 extern "C" LoadInst *Insert_Load_Before(Type *Ty, Value *Ptr,
                                         Instruction *Before) {
-  auto Inst = new LoadInst(Ty, Ptr, "", Before);
+  auto Inst = new LoadInst(Ty, Ptr, "", Before->getIterator());
   Inst->setDebugLoc(Before->getDebugLoc());
   return Inst;
 }
 
 extern "C" void Insert_Store_Before(Value *Val, Value *Ptr,
                                     Instruction *Before) {
-  auto Inst = new StoreInst(Val, Ptr, Before);
+  auto Inst = new StoreInst(Val, Ptr, Before->getIterator());
   Inst->setDebugLoc(Before->getDebugLoc());
 }
 

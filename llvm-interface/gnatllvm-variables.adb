@@ -247,6 +247,11 @@ package body GNATLLVM.Variables is
    --  result and any emitted code. F is a function to be applied to the
    --  result of Emit_Expression before discarding it and its return is the
    --  return of this function.
+   function Test_Emit_For_Convert
+     (N : N_Subexpr_Id; GT : GL_Type) return Boolean;
+   --  Emit N using Emit_Expression, but ignore overflows and discard the
+   --  result and any emitted code. See if the result is an aggregate
+   --  constant that can be converted to GT. Return whether it can or not.
 
    function Is_Static_Location (N : N_Subexpr_Id) return Boolean;
    --  Return True if N represent an object with constant address
@@ -568,6 +573,42 @@ package body GNATLLVM.Variables is
       return Result;
    end Test_Emit;
 
+   ---------------------------
+   -- Test_Emit_For_Convert --
+   ---------------------------
+
+   function Test_Emit_For_Convert
+     (N : N_Subexpr_Id; GT : GL_Type) return Boolean
+   is
+      Save_Fn  : constant GL_Value   := Current_Func;
+      Position : constant Position_T :=
+        (if   Present (Current_Func) then Get_Current_Position
+         else No_Position_T);
+      Result   : Boolean;
+
+   begin
+      --  Create a new function and add it to the current module (so we can
+      --  delete it) by setting Is_Builtin to be True. Then create a new
+      --  basic block, position to it, emit the code, perform the test, and
+      --  pop back to the previous state.
+
+      Current_Func :=
+        Add_Function ("__dummy", Fn_Ty ((1 .. 0 => <>), Void_Ty),
+                      Void_GL_Type, Is_Builtin => True);
+      Position_Builder_At_End (Create_Basic_Block ("entry"));
+      Push_Suppress_Overflow;
+      Result := Can_Convert_Aggregate_Constant (Emit_Expression (N), GT);
+      Pop_Suppress_Overflow;
+      Delete_Function (+Current_Func);
+      Current_Func := Save_Fn;
+
+      if Present (Position) then
+         Set_Current_Position (Position);
+      end if;
+
+      return Result;
+   end Test_Emit_For_Convert;
+
    ------------------------
    -- Is_Static_Location --
    ------------------------
@@ -745,8 +786,7 @@ package body GNATLLVM.Variables is
          when others =>
             return Compile_Time_Known_Value (N)
               and then (not Not_Symbolic
-                          or else Test_Emit (N, Is_A_Constant_Int'Access)
-                          or else Test_Emit (N, Is_A_Constant_FP'Access));
+                        or else Test_Emit (N, Is_A_Constant_Int_Or_FP'Access));
       end case;
    end Is_Static_Or_Address;
 
@@ -1033,18 +1073,17 @@ package body GNATLLVM.Variables is
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (GT)
-                          or else Type_Of (GT) = Address_MD
-                          or else Test_Emit (Expression (N),
-                                             Is_A_Constant_Int'Access)
-                          or else Test_Emit (Expression (N),
-                                             Is_A_Constant_FP'Access))
+                        or else Type_Of (GT) = Address_MD
+                        or else Test_Emit (Expression (N),
+                                           Is_A_Constant_Int_Or_FP'Access)
+                        or else Test_Emit_For_Convert (Expression (N), GT))
 
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
 
               and then (Nkind (N) /= N_Type_Conversion
-                          or else not Do_Overflow_Check (N)
-                          or else not Test_Emit (N, Overflowed'Access));
+                        or else not Do_Overflow_Check (N)
+                        or else not Test_Emit (N, Overflowed'Access));
             --  If testing for overflow, must not overflow
 
          when N_Attribute_Reference =>

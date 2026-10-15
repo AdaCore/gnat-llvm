@@ -28,12 +28,7 @@ project Gnat_LLVM is
       case Build is
          when "Debug" =>
             for Switches ("C++") use ("-g", "-Wall", "-Wno-unused-variable",
-                                       "-Werror",
-                                       --  We currently use a few
-                                       --  deprecated LLVM APIs, and
-                                       --  don't want errors for
-                                       --  these.
-                                       "-Wno-error=deprecated-declarations");
+                                       "-Werror");
             for Switches ("Ada") use Common_Switches & ("-gnata", "-gnateE");
 
          when "Production" =>

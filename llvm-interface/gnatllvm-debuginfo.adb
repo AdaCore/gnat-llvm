@@ -1645,8 +1645,9 @@ package body GNATLLVM.DebugInfo is
                  (DI_Builder, Get_Scope_For (E), Name,
                   (if Ext_Name = Full_Name then "" else Ext_Name),
                   Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Physical_Line_Number (S), Type_Data, False,
-                  Empty_DI_Expr, No_Metadata_T, Get_Type_Alignment (GT));
+                  Get_Physical_Line_Number (S), Type_Data,
+                  Declared_In_Package_Body (E), Empty_DI_Expr,
+                  No_Metadata_T, Get_Type_Alignment (GT));
             end if;
          else
             MD :=
@@ -1654,7 +1655,8 @@ package body GNATLLVM.DebugInfo is
                 (Get_Scope_For (E), Name,
                  (if Ext_Name = Full_Name then "" else Ext_Name),
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                 Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+                 Get_Physical_Line_Number (S), Type_Data,
+                 Declared_In_Package_Body (E), Empty_DI_Expr,
                  No_Metadata_T, Get_Type_Alignment (GT));
             Global_Set_Metadata (+V, 0, MD);
          end if;
@@ -1688,7 +1690,8 @@ package body GNATLLVM.DebugInfo is
         (DI_Builder, Get_Scope_For (E), Name,
          (if Ext_Name = Full_Name then "" else Ext_Name),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+         Get_Physical_Line_Number (S), Type_Data,
+         Declared_In_Package_Body (E), Empty_DI_Expr,
          No_Metadata_T, Get_Type_Alignment (GT));
       MD := DI_Global_Variable_Expression_Get_Variable (MD);
       Set_Debug_Metadata (E, MD);

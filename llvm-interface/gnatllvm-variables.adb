@@ -1945,8 +1945,14 @@ package body GNATLLVM.Variables is
             --  from a different DLL via MinGW's auto-import feature (which
             --  replaces explicit dllimport declarations); the relocations
             --  emitted for dso_local variables are too narrow in this case.
+            --
+            --  Don't set it for weak external variables either, as for
+            --  subprograms. In PIC and PIE code, a dso_local variable is
+            --  accessed PC-relatively, which cannot give a null address
+            --  when the symbol stays undefined.
 
             if not DSO_Preemptable
+              and then Get_Linkage (LLVM_Var) /= External_Weak_Linkage
               and then (not Is_Windows_Target or else Definition)
             then
                Set_DSO_Local (LLVM_Var);

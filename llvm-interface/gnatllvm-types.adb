@@ -1243,10 +1243,12 @@ package body GNATLLVM.Types is
          Our_Size     : Result;
 
       begin
-         --  If a value was specified and it's data, then it must be of a
-         --  fixed size. That's the size we're looking for.
+         --  If a value was specified and it's data and it's of the type
+         --  we're looking for, it must be of a fixed size. That's the size
+         --  we're looking for.
 
          if Present (V) and then Is_Data (V)
+           and then Related_Type (V) = Size_GT
            and then not Use_Max_Size and then not Unpad_Record
          then
             Our_Size := From_Const (Get_Type_Size (Type_Of (V)));

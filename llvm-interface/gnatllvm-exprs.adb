@@ -2160,6 +2160,18 @@ package body GNATLLVM.Exprs is
          while Present (Input) loop
             Input_Pos := Input_Pos + 1;
             Args (Input_Pos) := Get (Emit_Expression (Input), Object);
+
+            --  LLVM interprets integer asm immediates as signed. Widen
+            --  nonstandard integer widths here so modular values retain
+            --  their value when LLVM legalizes the operands. Use the same
+            --  types for register inputs and outputs, including tied ones.
+
+            if Is_Integer_Type (Args (Input_Pos)) then
+               Args (Input_Pos) :=
+                 Convert (Args (Input_Pos),
+                          Asm_Operand_Type (Related_Type (Args (Input_Pos))));
+            end if;
+
             Add_Constraint (Asm_Input_Constraint);
             Next_Asm_Input;
             Input := Asm_Input_Value;
@@ -2250,14 +2262,22 @@ package body GNATLLVM.Exprs is
               Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and
-         --  store the result, casting the output pointer to the right type
-         --  to handle LLVM's refusal of some output types. Otherwise, just
-         --  do the call.
+         --  store the result. Convert widened integers back to the output
+         --  type, and cast the output pointer to handle LLVM's refusal of
+         --  some output types. Otherwise, just do the call.
 
          if Present (Output_Variable) then
-            Store
-              (Call (Asm, Fn_MD, Args),
-               G_Is_Ref (Output_Val, Related_Type (Asm)));
+            declare
+               Result : GL_Value := Call (Asm, Fn_MD, Args);
+
+            begin
+               if Is_Integer_Type (Output_Val) then
+                  Result := Convert (Result, Related_Type (Output_Val));
+               end if;
+
+               Store (Result,
+                      G_Is_Ref (Output_Val, Related_Type (Result)));
+            end;
          else
             Call (Asm, Fn_MD, Args);
          end if;

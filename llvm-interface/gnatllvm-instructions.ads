@@ -994,6 +994,12 @@ package GNATLLVM.Instructions is
    procedure Build_Resume (V : GL_Value)
      with Pre => Present (V), Inline;
 
+   function Asm_Operand_Type (GT : GL_Type) return GL_Type
+     with Pre  => Present (GT),
+          Post => Present (Asm_Operand_Type'Result);
+   --  Widen integer operands to a standard width, preserving signedness.
+   --  Other operand types are unchanged.
+
    function Inline_Asm
      (Args           : GL_Value_Array;
       Output_Value   : Entity_Id;

@@ -125,7 +125,8 @@ package body GNATLLVM.Records.Debug is
       Original_Type    : Entity_Id;
       Is_Union         : Boolean;
       Toplevel_Members : in out Member_Vector;
-      Outermost_Call   : Boolean) return Metadata_Array;
+      Outermost_Call   : Boolean;
+      Chained          : Boolean) return Metadata_Array;
    --  Convert a chain of Record_Info_Ids to LLVM debug metadata, returning
    --  an array holding the metadata for the relevant fields.
    --  Toplevel_Members points to the vector of members for the outermost
@@ -851,11 +852,20 @@ package body GNATLLVM.Records.Debug is
       for J in RI.Variants'Range loop
          declare
             Empty_Fields : Metadata_Array (1 .. 0);
-            Fields       : constant Metadata_Array :=
-              (if   Present (RI.Variants (J))
+
+            Initial_Fields : constant Metadata_Array :=
+              (if Present (RI.Variants (J))
                then Convert_RI_Chain (M, RI.Variants (J), Original_Type,
-                                      Is_Union, Toplevel_Members, False)
+                                      Is_Union, Toplevel_Members, False, True)
                else Empty_Fields);
+
+            Fields       : constant Metadata_Array :=
+              (if Present (RI.Overlap_Variants (J))
+               then Initial_Fields &
+                    Convert_RI_Chain (M, RI.Overlap_Variants (J),
+                                      Original_Type, Is_Union,
+                                      Toplevel_Members, False, False)
+               else Initial_Fields);
 
          begin
             if Is_Union then
@@ -891,8 +901,6 @@ package body GNATLLVM.Records.Debug is
          Next (Var_Node);
       end loop;
 
-      --  ??? Handle Overlap_Variants here
-
       declare
          Members : Metadata_Array (1 .. Member_Table.Last);
 
@@ -915,7 +923,8 @@ package body GNATLLVM.Records.Debug is
       Original_Type    : Entity_Id;
       Is_Union         : Boolean;
       Toplevel_Members : in out Member_Vector;
-      Outermost_Call   : Boolean) return Metadata_Array
+      Outermost_Call   : Boolean;
+      Chained          : Boolean) return Metadata_Array
    is
       Local_Members     : aliased Member_Vector;
       Members_To_Update : constant access Member_Vector :=
@@ -966,6 +975,7 @@ package body GNATLLVM.Records.Debug is
             F_Idx := FI.Next;
          end loop;
 
+         exit when not Chained;
          Ridx := RI.Next;
       end loop;
 
@@ -1041,7 +1051,7 @@ package body GNATLLVM.Records.Debug is
 
    begin
       return Convert_RI_Chain (M, Start, Original_Type, Is_Union,
-                               Toplevel_Members, True);
+                               Toplevel_Members, True, True);
    end Convert_RI_Chain;
 
    ------------------------------

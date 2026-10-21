@@ -45,6 +45,7 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 with CCG; use CCG;
@@ -1323,14 +1324,17 @@ package body GNATLLVM.Exprs is
    function Emit_Attribute_Reference
      (N : N_Attribute_Reference_Id) return GL_Value
    is
-      Attr   : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      Pref   : constant N_Subexpr_Id := Prefix (N);
-      GT     : constant GL_Type      := Full_GL_Type (N);
-      V      : GL_Value              := No_GL_Value;
-      P_GT   : GL_Type               := Full_GL_Type (Pref);
-      Bits   : Uint;
-      Ret_UI : Uint;
-      Result : GL_Value;
+      Attr      : constant Attribute_Id :=
+        Get_Attribute_Id (Attribute_Name (N));
+      Pref      : constant N_Subexpr_Id := Prefix (N);
+      Is_A_Type : constant Boolean :=
+        Is_Entity_Name (Pref) and then Is_Type (Entity (Pref));
+      GT        : constant GL_Type      := Full_GL_Type (N);
+      V         : GL_Value              := No_GL_Value;
+      P_GT      : GL_Type               := Full_GL_Type (Pref);
+      Bits      : Uint;
+      Ret_UI    : Uint;
+      Result    : GL_Value;
 
    begin
       --  First see if this is something we can compute from annotations
@@ -1341,6 +1345,9 @@ package body GNATLLVM.Exprs is
       if Present (Ret_UI) then
          return Const_Int (GT, Ret_UI);
       end if;
+
+      --  Otherwise, compute the attribute. Note that we're required to
+      --  evaluate the prefix.
 
       case Attr is
          when Attribute_Access | Attribute_Unchecked_Access
@@ -1434,12 +1441,16 @@ package body GNATLLVM.Exprs is
             BT          : constant GL_Type := Base_GL_Type (P_GT);
             Dim         : constant Nat     :=
               (if   Present (Expressions (N))
-              then +Intval (First (Expressions (N))) - 1 else 0);
+               then +Intval (First (Expressions (N))) - 1 else 0);
             Array_Descr : GL_Value;
             Low, High   : GL_Value;
 
          begin
+            --  If this is of a scalar type, if must be the type, not
+            --  an object of the type.
+
             if Is_Scalar_Type (P_GT) then
+               pragma Assert (Is_A_Type);
                Low  := Emit_Convert_Value (Type_Low_Bound  (P_GT), BT);
                High := Emit_Convert_Value (Type_High_Bound (P_GT), BT);
 
@@ -1459,10 +1470,10 @@ package body GNATLLVM.Exprs is
                --  If what we're taking the prefix of is a type, we can't
                --  evaluate it as an expression.
 
-               if Is_Entity_Name (Pref) and then Is_Type (Entity (Pref)) then
+               if Is_A_Type then
                   Array_Descr := No_GL_Value;
                else
-                  Array_Descr := Emit_LValue (Pref);
+                  Array_Descr := Emit (Pref);
                   P_GT        := Related_Type (Array_Descr);
                end if;
 
@@ -1497,13 +1508,13 @@ package body GNATLLVM.Exprs is
             --  if any.
 
             if Nkind (Pref) = N_Identifier
-              and then Ekind (Entity (Pref)) in E_Discriminant | E_Component
+              and then Ekind (Entity (Pref)) in Record_Field_Kind
             then
                F   := Entity (Pref);
                Val := No_GL_Value;
             elsif Nkind (Pref) = N_Selected_Component then
                F   := Entity (Selector_Name (Pref));
-               Val := Emit_LValue (Prefix (Pref));
+               Val := Emit (Prefix (Pref));
             else
                pragma Assert (Attr = Attribute_Bit);
                return Const_Null (GT);
@@ -1554,27 +1565,26 @@ package body GNATLLVM.Exprs is
 
          begin
             pragma Assert (List_Length (Exprs) = 1);
-            V := (if   Attr = Attribute_Succ
-                   then Add (Base, One, "attr.succ")
-                     else Sub (Base, One, "attr.pred"));
+               V := (if   Attr = Attribute_Succ then Add (Base, One)
+                     else Sub (Base, One));
 
-            --  If this is a modular type, we have to check for wrap and
-            --  adjust if so.
+               --  If this is a non-binary modular type, we have to check
+               --  for wrap and adjust if so.
 
-            if Non_Binary_Modulus (GT) then
-               declare
-                  C_0  : constant GL_Value := Const_Null (Base);
-                  C_M1 : constant GL_Value :=
-                    Const_Int (Base, Modulus (GT) - 1);
+               if Non_Binary_Modulus (GT) then
+                  declare
+                     C_0  : constant GL_Value := Const_Null (Base);
+                     C_M1 : constant GL_Value :=
+                       Const_Int (Base, Modulus (GT) - 1);
+                     Cmp  : constant GL_Value :=
+                       (if Attr = Attribute_Succ then C_M1 else C_0);
+                     Val  : constant GL_Value :=
+                       (if Attr = Attribute_Succ then C_0  else C_M1);
 
-               begin
-                  if Attr = Attribute_Succ then
-                     V := Build_Select (I_Cmp (Int_EQ, Base, C_M1), C_0, V);
-                  else --  Attr = Attribute_Pred
-                     V := Build_Select (I_Cmp (Int_EQ, Base, C_0), C_M1, V);
-                  end if;
-               end;
-            end if;
+                  begin
+                     V := Build_Select (I_Cmp (Int_EQ, Base, Cmp), Val, V);
+                  end;
+               end if;
 
             return V;
          end Succ_Pred;
@@ -1587,17 +1597,19 @@ package body GNATLLVM.Exprs is
             return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
+
+            if not Is_A_Type then
+               P_GT := Related_Type (Emit (Pref));
+            end if;
+
             return Const_Int (GT,
                               To_Bytes (ULL (Nat'(Get_Type_Alignment (P_GT)))),
                               Sign_Extend => False);
 
          when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size
-            | Attribute_Max_Size_In_Storage_Elements
-         =>
+            | Attribute_Max_Size_In_Storage_Elements =>
          Size : declare
 
-            Is_A_Type   : constant Boolean :=
-              Is_Entity_Name (Pref) and then Is_Type (Entity (Pref));
             Max_Size    : constant Boolean :=
               Is_A_Type and then not Is_Constrained (P_GT);
             No_Padding  : constant Boolean :=
@@ -1607,15 +1619,13 @@ package body GNATLLVM.Exprs is
          begin
             --  If this is a value we want to use that value to help find
             --  the size of the type and also to get the actual
-            --  GL_Type. This is only useful for aggregate types or
-            --  N_Selected_Component and could cause us to needlessly make
+            --  GL_Type. And we are required to evaluate the prefix.
+            --  But don't do this for constants that don't need elaboration
+            --  because that could cause us to needlessly make
             --  a Reference in other cases.
 
-            if not Is_A_Type
-              and then (Is_Aggregate_Type (Full_Etype (Pref))
-                        or else Nkind (Pref) = N_Selected_Component)
-            then
-               V    := Emit_LValue (Pref);
+            if not Is_A_Type and then not Is_No_Elab_Needed (Pref) then
+               V    := Emit (Pref);
                P_GT := Related_Type (V);
             end if;
 
@@ -1627,13 +1637,18 @@ package body GNATLLVM.Exprs is
                   V := V + Get_Bound_Size (P_GT);
                end if;
 
-               return To_Bytes (Convert (V, GT));
+               return Convert (To_Bytes (V), GT);
             else
                return Convert (V, GT);
             end if;
          end Size;
 
          when Attribute_Component_Size =>
+
+            if not Is_A_Type then
+               Discard (Emit (Pref));
+            end if;
+
             return Convert
               (Get_Type_Size (Full_Component_GL_Type (P_GT), Max_Size => True),
                GT);
@@ -1641,6 +1656,7 @@ package body GNATLLVM.Exprs is
          when Attribute_Descriptor_Size =>
             pragma Assert (Is_Unconstrained_Array (P_GT));
 
+            Discard (Emit (Pref));
             return Get_Bound_Size (P_GT);
 
          when Attribute_Passed_By_Reference =>

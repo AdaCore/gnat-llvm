@@ -603,8 +603,9 @@ package GNATLLVM.Instructions is
    function "mod" (LHS : GL_Value; RHS : Int) return GL_Value is
      (LHS mod Const_Int (LHS, +RHS));
 
-   function To_Bytes (V : GL_Value) return GL_Value
-     with Pre => Present (V), Post => Present (To_Bytes'Result);
+   function To_Bytes (V : GL_Value) return GL_Value is
+     ((V + (BPU - 1)) / BPU)
+     with Pre => Present (V);
 
    function Ident (V : GL_Value) return GL_Value is (V);
 

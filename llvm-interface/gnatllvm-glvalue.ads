@@ -1550,12 +1550,21 @@ package GNATLLVM.GLValue is
    function Get_Type_Alignment
      (V : GL_Value; Use_Specified : Boolean := True) return Nat
      with Pre => Present (V), Inline;
+   function Get_Type_Alignment_In_Bytes
+     (V : GL_Value; Use_Specified : Boolean := True) return Nat
+     with Pre => Present (V);
 
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
      with Pre  => Present (GT),
           Post => Type_Of (Get_Type_Alignment'Result) = Bitsize_MD,
           Inline;
+   function Get_Type_Alignment_In_Bytes
+     (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
+     with Pre  => Present (GT),
+          Post => Type_Of (Get_Type_Alignment_In_Bytes'Result) = Bitsize_MD;
+   --  Get the alignment, expressed either in bits or bytes. In both
+   --  cases, the type of the result is Bitsize_Type.
 
    function GT_Check_Overflow (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;

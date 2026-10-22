@@ -187,6 +187,15 @@ package body GNATLLVM.Types is
    --  V is a constant. If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
+   -------------------
+   -- To_Size_Bytes --
+   -------------------
+
+   function To_Size_Bytes (V : GL_Value) return GL_Value is
+     (Set_Alignment (Convert_GT (To_Bytes (V), Size_GL_Type),
+                     Alignment (V) / BPU))
+     with Pre => Type_Of (V) = Bitsize_MD;
+
    -------------
    -- Convert --
    -------------
@@ -1328,7 +1337,7 @@ package body GNATLLVM.Types is
                 Get_Array_Type_Size     => Get_Array_Type_Size_In_Bytes,
                 Get_Type_Size           => Get_Type_Size_In_Bytes,
                 Get_Bound_Size          => Get_Bound_Size_In_Bytes,
-                From_Bits               => To_Bytes,
+                From_Bits               => To_Size_Bytes,
                 "-"                     => "-");
 
    function Get_Type_Size_In_Bytes
@@ -1442,7 +1451,7 @@ package body GNATLLVM.Types is
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT) then
          Size := Align_To_In_Bytes (Size + Get_Bound_Size_In_Bytes (GT),
-                                    To_Bytes (Get_Type_Alignment (GT)),
+                                    Get_Type_Alignment_In_Bytes (GT),
                                     To_Bytes (Get_Bound_Alignment (GT)));
       end if;
 

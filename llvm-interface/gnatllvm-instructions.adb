@@ -1906,6 +1906,34 @@ package body GNATLLVM.Instructions is
       Discard (Build_Resume (IR_Builder, +V));
    end Build_Resume;
 
+   ----------------------
+   -- Asm_Operand_Type --
+   ----------------------
+
+   function Asm_Operand_Type (GT : GL_Type) return GL_Type is
+   begin
+      if Is_Integer_Type (GT) then
+         declare
+            Size     : constant Nat := Get_Scalar_Size (GT);
+            Asm_Size : constant Nat :=
+              (case Size is
+                 when 1 .. 8   => 8,
+                 when 9 .. 16  => 16,
+                 when 17 .. 32 => 32,
+                 when 33 .. 64 => 64,
+                 when others   => Size);
+
+         begin
+            if Size /= Asm_Size then
+               return Full_GL_Type
+                 (Stand_Type (Asm_Size, Is_Unsigned_For_Convert (GT)));
+            end if;
+         end;
+      end if;
+
+      return GT;
+   end Asm_Operand_Type;
+
    ----------------
    -- Inline_Asm --
    ----------------
@@ -1921,7 +1949,8 @@ package body GNATLLVM.Instructions is
    is
       GT        : GL_Type :=
         (if   Present (Output_Value)
-         then Primitive_GL_Type (Full_Etype (Output_Value))
+         then Asm_Operand_Type
+                (Primitive_GL_Type (Full_Etype (Output_Value)))
          else Void_GL_Type);
       MD        : MD_Type  :=
         (if Present (Output_Value) then Type_Of (GT) else Void_Ty);

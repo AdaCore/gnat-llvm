@@ -521,7 +521,7 @@ package body GNATLLVM.DebugInfo is
          --  If the subprogram has a return value, add it to the list of fields
 
          if LRK = Struct_Out_Subprog then
-            OK := Add_Field (Field_MDs, Idx, Offset, Rec_Align, "return_",
+            OK := Add_Field (Field_MDs, Idx, Offset, Rec_Align, "RETVAL",
                              Sloc (E), Get_Type_Alignment (Full_GL_Type (E)),
                              0, GT => Full_GL_Type (E));
          end if;

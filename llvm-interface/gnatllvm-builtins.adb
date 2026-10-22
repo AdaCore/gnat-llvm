@@ -565,8 +565,7 @@ package body GNATLLVM.Builtins is
    begin
       Set_Ordering  (Inst, Order);
       Set_Volatile  (Inst, True);
-      Set_Alignment (Inst,
-                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+      Set_Alignment (Inst, unsigned (Nat'(Get_Type_Alignment_In_Bytes (GT))));
 
       return G (Inst, GT, Type_Of (GT));
    end Emit_Atomic_Load;
@@ -583,8 +582,7 @@ package body GNATLLVM.Builtins is
    begin
       Set_Ordering (Inst, Order);
       Set_Volatile  (Inst, True);
-      Set_Alignment
-        (Inst, unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+      Set_Alignment (Inst, unsigned (Nat'(Get_Type_Alignment_In_Bytes (GT))));
    end Emit_Atomic_Store;
 
    --------------------

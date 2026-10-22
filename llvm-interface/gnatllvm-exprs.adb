@@ -1603,7 +1603,7 @@ package body GNATLLVM.Exprs is
             end if;
 
             return Const_Int (GT,
-                              To_Bytes (ULL (Nat'(Get_Type_Alignment (P_GT)))),
+                              ULL (Nat'(Get_Type_Alignment_In_Bytes (P_GT))),
                               Sign_Extend => False);
 
          when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size
@@ -1832,7 +1832,7 @@ package body GNATLLVM.Exprs is
             if Size /= 0 then
                Build_MemSet (Get (Dest, Reference),
                              Const_Null (SSI_GL_Type), Size,
-                             To_Bytes (Get_Type_Alignment (Dest_GT)),
+                             Get_Type_Alignment_In_Bytes (Dest_GT),
                              Is_Volatile (Dest),
                              TBAA =>
                                Compute_TBAA_Access (Dest, No_GL_Value, Size));
@@ -1921,8 +1921,8 @@ package body GNATLLVM.Exprs is
                   Temp : constant GL_Value :=
                     Array_Alloca
                       (SSI_GL_Type, Size, Empty,
-                       To_Bytes (Nat'Max (Get_Type_Alignment (Dest_GT),
-                                          Get_Type_Alignment (Src_GT))));
+                       Nat'Max (Get_Type_Alignment_In_Bytes (Dest_GT),
+                                Get_Type_Alignment_In_Bytes (Src_GT)));
 
                begin
                   Call_SM_Copy_From (Temp, Mem_Src, Size);
@@ -1939,8 +1939,8 @@ package body GNATLLVM.Exprs is
             elsif (Forwards_OK and then Backwards_OK)
               or else (Present (Expr) and then Is_Safe_From (Dest, Expr))
             then
-               Build_MemCpy (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
-                             Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
+               Build_MemCpy (Mem_Dst, Get_Type_Alignment_In_Bytes (Dest_GT),
+                             Mem_Src, Get_Type_Alignment_In_Bytes (Src_GT),
                              Size, Need_Volatile,
                              TBAA        =>
                                Compute_TBAA_Access (Dest, Src, Size),
@@ -1950,8 +1950,8 @@ package body GNATLLVM.Exprs is
             --  Or else use memmove
 
             else
-               Build_MemMove (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
-                              Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
+               Build_MemMove (Mem_Dst, Get_Type_Alignment_In_Bytes (Dest_GT),
+                              Mem_Src, Get_Type_Alignment_In_Bytes (Src_GT),
                               Size, Need_Volatile,
                               TBAA => Compute_TBAA_Access (Dest, Src, Size));
             end if;

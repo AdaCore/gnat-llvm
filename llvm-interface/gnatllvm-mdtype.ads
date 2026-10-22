@@ -215,6 +215,8 @@ package GNATLLVM.MDType is
                  or else MD = Void_Ptr_MD;
    function Get_Type_Alignment (MD : MD_Type) return Nat
      with Pre => Present (MD);
+   function Get_Type_Alignment_In_Bytes (MD : MD_Type) return Nat
+     with Pre => Present (MD);
 
    function Make_Volatile (MD : MD_Type; B : Boolean := True) return MD_Type
      with Pre => Present (MD), Post => Is_Volatile (Make_Volatile'Result) = B;

@@ -333,6 +333,11 @@ $(RTSDIR):
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
 	  $(RM) s-oscons-tmplt.*
 	sed -f $(GNAT_SRC)/xsintnam.sed $(RTSDIR)/a-intnam.ads > $(RTSDIR)/s-intnam.ads
+	if grep -qFe cfsetxspeed.c $(RTSDIR)/libgnat.lst; then \
+	  $(OSCONS_CC) $(GNAT_SRC)/cfsetxspeed-symbol-probe.c -o cfsetxspeed-symbol-probe && \
+	  cp $(GNAT_SRC)/cfsetxspeed-tmplt.c $(RTSDIR)/cfsetxspeed.c && \
+	  bash $(GNAT_SRC)/cfsetxspeed.sh cfsetxspeed-symbol-probe $(RTSDIR)/cfsetxspeed.c llvm-nm; \
+	fi
 
 # llvm-gcc normally links with the Clang binary found on the PATH. If a
 # different binary is needed (such as with our target-specific Clang binaries),

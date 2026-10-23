@@ -17,6 +17,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
@@ -89,6 +90,45 @@ extern "C" MDNode *Create_TBAA_Root(MDBuilder *MDHelper) {
 
 extern "C" void Add_Cold_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::Cold);
+}
+
+extern "C" void Set_Asm_Location(Instruction *Call, uint64_t Location) {
+  auto &Ctx = Call->getContext();
+  auto *Loc = ConstantAsMetadata::get(
+      ConstantInt::get(Type::getInt64Ty(Ctx), Location));
+  Call->setMetadata("srcloc", MDNode::get(Ctx, Loc));
+}
+
+using AsmDiagnosticCallback = void (*)(uint64_t, const char *, int);
+
+namespace {
+class AsmDiagnosticHandler : public llvm::DiagnosticHandler {
+  AsmDiagnosticCallback Callback;
+  std::unique_ptr<llvm::DiagnosticHandler> Previous;
+
+public:
+  AsmDiagnosticHandler(AsmDiagnosticCallback Callback,
+                       std::unique_ptr<llvm::DiagnosticHandler> Previous)
+      : Callback(Callback), Previous(std::move(Previous)) {}
+
+  bool handleDiagnostics(const llvm::DiagnosticInfo &DI) override {
+    if (const auto *Asm = dyn_cast<DiagnosticInfoInlineAsm>(&DI)) {
+      if (Asm->getLocCookie() &&
+          (DI.getSeverity() == DS_Error || DI.getSeverity() == DS_Warning)) {
+        Callback(Asm->getLocCookie(), Asm->getMsgStr().str().c_str(),
+                 DI.getSeverity() == DS_Warning);
+        return true;
+      }
+    }
+    return Previous && Previous->handleDiagnostics(DI);
+  }
+};
+} // namespace
+
+extern "C" void Install_Asm_Diagnostic_Handler(LLVMContext *Ctx,
+                                               AsmDiagnosticCallback Callback) {
+  Ctx->setDiagnosticHandler(std::make_unique<AsmDiagnosticHandler>(
+      Callback, Ctx->getDiagnosticHandler()));
 }
 
 // ??? This function and its uses should be removed when System.Address

@@ -92,6 +92,13 @@ extern "C" void Add_Cold_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::Cold);
 }
 
+extern "C" void Add_Asm_Element_Type(CallBase *Call, unsigned Index,
+                                     Type *ElementType) {
+  Call->addParamAttr(
+      Index,
+      Attribute::get(Call->getContext(), Attribute::ElementType, ElementType));
+}
+
 extern "C" void Set_Asm_Location(Instruction *Call, uint64_t Location) {
   auto &Ctx = Call->getContext();
   auto *Loc = ConstantAsMetadata::get(
@@ -575,6 +582,39 @@ struct ClangTargetInfo {
 
   TargetInfo *Info;
 };
+
+// The kinds of asm constraints that we're interested in. Note the matching Ada
+// definition in gnatllvm-wrapper.ads.
+enum Asm_Constraint_Kind {
+  Invalid_Constraint = -1,
+  Value_Constraint = 0,
+  Memory_Constraint = 1,
+  Read_Write_Constraint = 2
+};
+
+extern "C" Asm_Constraint_Kind
+Classify_Asm_Constraint(ClangTargetInfo *CTI, const char *Constraint,
+                        const char *OutputConstraint, bool IsOutput) {
+  TargetInfo::ConstraintInfo Info(Constraint, "");
+  if (IsOutput) {
+    if (!CTI->Info->validateOutputConstraint(Info))
+      return Invalid_Constraint;
+    if (Info.isReadWrite())
+      return Read_Write_Constraint;
+  } else {
+    SmallVector<TargetInfo::ConstraintInfo, 1> Outputs;
+    if (*OutputConstraint) {
+      Outputs.emplace_back(OutputConstraint, "");
+      if (!CTI->Info->validateOutputConstraint(Outputs.back()))
+        return Invalid_Constraint;
+    }
+    if (!CTI->Info->validateInputConstraint(Outputs, Info))
+      return Invalid_Constraint;
+  }
+
+  return Info.allowsMemory() && !Info.allowsRegister() ? Memory_Constraint
+                                                       : Value_Constraint;
+}
 
 extern "C" ClangTargetInfo *Get_Target_Info(const char *TargetTriple,
                                             const char *CPU, const char *ABI,

@@ -2036,6 +2036,7 @@ package body GNATLLVM.Exprs is
          Arg_Modifier     : String (1 .. In_Template_Len);
          Arg_Modifier_Pos : Integer;
          Asm              : GL_Value;
+         Result           : GL_Value;
          In_Template_Pos  : Integer := 0;
          Out_Template_Pos : Integer := 0;
 
@@ -2276,25 +2277,21 @@ package body GNATLLVM.Exprs is
               Constraints (1 .. Constraint_Pos), Fn_MD,
               Is_Asm_Volatile (N), False);
 
-         --  If we have an output, generate the call with an output and
-         --  store the result. Convert widened integers back to the output
-         --  type, and cast the output pointer to handle LLVM's refusal of
-         --  some output types. Otherwise, just do the call.
+         Result := Call (Asm, Fn_MD, Args);
+         if Sloc (N) > No_Location then
+            Set_Asm_Location (+Result, ULL (Sloc (N)));
+         end if;
+
+         --  If we have an output, store the result. Convert widened integers
+         --  back to the output type, and cast the output pointer to handle
+         --  LLVM's refusal of some output types.
 
          if Present (Output_Variable) then
-            declare
-               Result : GL_Value := Call (Asm, Fn_MD, Args);
+            if Is_Integer_Type (Output_Val) then
+               Result := Convert (Result, Related_Type (Output_Val));
+            end if;
 
-            begin
-               if Is_Integer_Type (Output_Val) then
-                  Result := Convert (Result, Related_Type (Output_Val));
-               end if;
-
-               Store (Result,
-                      G_Is_Ref (Output_Val, Related_Type (Result)));
-            end;
-         else
-            Call (Asm, Fn_MD, Args);
+            Store (Result, G_Is_Ref (Output_Val, Related_Type (Result)));
          end if;
       end;
    end Emit_Code_Statement;

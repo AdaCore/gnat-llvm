@@ -20,6 +20,7 @@ with Ada.Directories;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Interfaces;
 with Interfaces.C;      use Interfaces.C;
+with Interfaces.C.Strings;
 with System;            use System;
 with System.OS_Lib;     use System.OS_Lib;
 
@@ -75,6 +76,33 @@ package body GNATLLVM.Codegen is
 
    procedure Process_Switch (S : String);
    --  Process one command-line switch
+
+   procedure Asm_Diagnostic
+     (Location : ULL;
+      Message  : Interfaces.C.Strings.chars_ptr;
+      Warning  : Interfaces.C.int)
+     with Convention => C;
+   --  Report an LLVM inline asm diagnostic at its GNAT source location. This
+   --  procedure is meant to be called via LLVM's diagnostics machinery.
+
+   --------------------
+   -- Asm_Diagnostic --
+   --------------------
+
+   procedure Asm_Diagnostic
+     (Location : ULL;
+      Message  : Interfaces.C.Strings.chars_ptr;
+      Warning  : Interfaces.C.int)
+   is
+      Text : constant String := Interfaces.C.Strings.Value (Message);
+
+   begin
+      Error_Msg_Strlen := Natural'Min (Text'Length, Error_Msg_String'Length);
+      Error_Msg_String (1 .. Error_Msg_Strlen) :=
+        Text (Text'First .. Text'First + Error_Msg_Strlen - 1);
+      Error_Msg ((if Warning /= 0 then "??~" else "~"),
+                 Source_Ptr (Location));
+   end Asm_Diagnostic;
 
    function Add_Maybe_With_Comma (S1, S2 : String) return String is
      (if S1 = "" or else S2 = "" then S1 & S2 else S1 & "," & S2);
@@ -937,6 +965,9 @@ package body GNATLLVM.Codegen is
       Err_Msg  : aliased Ptr_Err_Msg_Type;
 
    begin
+      Install_Asm_Diagnostic_Handler
+        (Get_Global_Context, Asm_Diagnostic'Address);
+
       --  We always want to write IR, even if there were errors.
       --  First verify the translation unless we're just processing
       --  for decls.
@@ -1152,6 +1183,7 @@ package body GNATLLVM.Codegen is
 
          when Write_Assembly => Assembly : declare
             S : constant String := Output_File_Name (".s");
+            Deleted : Boolean;
 
          begin
             if Target_Machine_Emit_To_File
@@ -1160,11 +1192,23 @@ package body GNATLLVM.Codegen is
                Error_Msg_N ("could not write `" & S & "`: " &
                               Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
             end if;
+
+            --  LLVM can finish emitting a file after reporting an asm error.
+            --  Such a file must not be used by a subsequent build.
+
+            if Serious_Errors_Detected /= 0 and then Ada.Directories.Exists (S)
+            then
+               Delete_File (S, Deleted);
+               if not Deleted then
+                  Error_Msg_N ("could not delete `" & S & "`", GNAT_Root);
+               end if;
+            end if;
          end Assembly;
 
          when Write_Object => Object : declare
             S : constant String :=
               Output_File_Name (Get_Target_Object_Suffix.all);
+            Deleted : Boolean;
 
          begin
             if Target_Machine_Emit_To_File (Target_Machine, Module, S,
@@ -1172,6 +1216,17 @@ package body GNATLLVM.Codegen is
             then
                Error_Msg_N ("could not write `" & S & "`: " &
                               Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
+            end if;
+
+            --  LLVM can finish emitting a file after reporting an asm error.
+            --  Such a file must not be used by a subsequent build.
+
+            if Serious_Errors_Detected /= 0 and then Ada.Directories.Exists (S)
+            then
+               Delete_File (S, Deleted);
+               if not Deleted then
+                  Error_Msg_N ("could not delete `" & S & "`", GNAT_Root);
+               end if;
             end if;
          end Object;
 

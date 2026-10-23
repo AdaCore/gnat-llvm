@@ -334,7 +334,7 @@ $(RTSDIR):
 	  $(RM) s-oscons-tmplt.*
 	sed -f $(GNAT_SRC)/xsintnam.sed $(RTSDIR)/a-intnam.ads > $(RTSDIR)/s-intnam.ads
 	if grep -qFe cfsetxspeed.c $(RTSDIR)/libgnat.lst; then \
-	  $(OSCONS_CC) $(GNAT_SRC)/cfsetxspeed-symbol-probe.c -o cfsetxspeed-symbol-probe && \
+	  $(OSCONS_CC) -no-pie $(GNAT_SRC)/cfsetxspeed-symbol-probe.c -o cfsetxspeed-symbol-probe && \
 	  cp $(GNAT_SRC)/cfsetxspeed-tmplt.c $(RTSDIR)/cfsetxspeed.c && \
 	  bash $(GNAT_SRC)/cfsetxspeed.sh cfsetxspeed-symbol-probe $(RTSDIR)/cfsetxspeed.c llvm-nm; \
 	fi

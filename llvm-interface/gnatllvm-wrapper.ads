@@ -74,6 +74,11 @@ package GNATLLVM.Wrapper is
    procedure Add_Cold_Attribute (Func : Value_T)
      with Import, Convention => C, External_Name => "Add_Cold_Attribute";
 
+   procedure Add_Asm_Element_Type
+     (Call : Value_T; Index : unsigned; Element_Type : Type_T)
+     with Import, Convention => C, External_Name => "Add_Asm_Element_Type";
+   --  Set the elementtype attribute on an indirect asm argument
+
    procedure Set_Asm_Location (Call : Value_T; Location : ULL)
      with Import, Convention => C, External_Name => "Set_Asm_Location";
    --  Attach a GNAT source location as an inline asm diagnostic cookie
@@ -82,6 +87,25 @@ package GNATLLVM.Wrapper is
      (Ctx : Context_T; Callback : System.Address)
      with Import, Convention => C,
           External_Name => "Install_Asm_Diagnostic_Handler";
+
+   type Asm_Constraint_Kind is
+     (Invalid_Constraint, Value_Constraint, Memory_Constraint,
+      Read_Write_Constraint)
+     with Convention => C;
+   for Asm_Constraint_Kind use
+     (Invalid_Constraint => -1, Value_Constraint => 0,
+      Memory_Constraint => 1, Read_Write_Constraint => 2);
+   --  The kinds of asm constraints that we're interested in. Note the matching
+   --  C++ definition in llvm_wrapper.cc.
+
+   function Classify_Asm_Constraint
+     (Target_Info       : Target_Info_T;
+      Constraint        : String;
+      Output_Constraint : String;
+      Is_Output         : Boolean) return Asm_Constraint_Kind
+     with Inline;
+   --  Classify an operand constraint. Memory constraints allow only memory;
+   --  read/write outputs are unsupported.
 
    procedure Add_Dereferenceable_Attribute
      (Func : Value_T; Idx : unsigned; Bytes : ULL)

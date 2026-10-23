@@ -1955,13 +1955,46 @@ package body GNATLLVM.Exprs is
       Output_Constraint : Node_Id            := Empty;
       Output_Val        : GL_Value           := No_GL_Value;
       Output_Variable   : Node_Id;
+      Indirect_Output   : Boolean := False;
+      Constraint_Kind   : Asm_Constraint_Kind;
       Input             : Node_Id;
       Clobber           : System.Address;
       Fn_MD             : MD_Type;
 
+      function Classify (C : N_String_Literal_Id; Output : Boolean := False)
+                         return Asm_Constraint_Kind;
+      --  Validate an operand constraint and choose its representation
+
+      --------------
+      -- Classify --
+      --------------
+
+      function Classify
+        (C : N_String_Literal_Id; Output : Boolean := False)
+         return Asm_Constraint_Kind
+      is
+         Kind : constant Asm_Constraint_Kind :=
+           Classify_Asm_Constraint
+             (Target_Info,
+              To_String (Strval (C)),
+              (if Present (Output_Constraint)
+               then To_String (Strval (Output_Constraint))
+               else ""),
+              Output);
+
+      begin
+         if Kind = Invalid_Constraint then
+            Error_Msg_N ("invalid Asm constraint", C);
+         elsif Kind = Read_Write_Constraint then
+            Error_Msg_N ("read/write Asm output is not supported", C);
+         end if;
+
+         return Kind;
+      end Classify;
+
    begin
-      --  LLVM only allows one output, so just get the information on
-      --  it, if any, and give an error if there's a second one.
+      --  We currently support one output, which may be direct or indirect.
+      --  Diagnose additional outputs before building the call.
 
       Setup_Asm_Outputs (N);
       Output_Variable := Asm_Output_Variable;
@@ -1969,11 +2002,18 @@ package body GNATLLVM.Exprs is
       if Present (Output_Variable) then
          Output_Constraint := Asm_Output_Constraint;
          Constraint_Length := String_Length (Strval (Output_Constraint));
-         Output_Val        := Emit_LValue (Output_Variable);
+         Constraint_Kind := Classify (Output_Constraint, Output => True);
+         if Constraint_Kind not in Value_Constraint | Memory_Constraint then
+            return;
+         end if;
+
+         Indirect_Output := Constraint_Kind = Memory_Constraint;
+         Output_Val := Get (Emit_LValue (Output_Variable), Reference);
          Next_Asm_Output;
 
          if Present (Asm_Output_Variable) then
-            Error_Msg_N ("'L'L'V'M only allows one output", N);
+            Error_Msg_N ("only one Asm output is supported", N);
+            return;
          end if;
       end if;
 
@@ -1984,6 +2024,11 @@ package body GNATLLVM.Exprs is
       Input := Asm_Input_Value;
 
       while Present (Input) loop
+         Constraint_Kind := Classify (Asm_Input_Constraint);
+         if Constraint_Kind not in Value_Constraint | Memory_Constraint then
+            return;
+         end if;
+
          Num_Inputs        := Num_Inputs + 1;
          Constraint_Length := Constraint_Length +
            String_Length (Strval (Asm_Input_Constraint));
@@ -2005,7 +2050,11 @@ package body GNATLLVM.Exprs is
       end loop;
 
       declare
-         Args             : GL_Value_Array (1 .. Num_Inputs);
+         Num_Args         : constant Nat :=
+           Num_Inputs + Boolean'Pos (Indirect_Output);
+         Args             : GL_Value_Array (1 .. Num_Args);
+         Element_Types    : MD_Type_Array (Args'Range) :=
+           (others => No_MD_Type);
          Constraint_Pos   : Integer          := 0;
          Input_Pos        : Nat              := 0;
          Need_Comma       : Boolean          := False;
@@ -2026,7 +2075,8 @@ package body GNATLLVM.Exprs is
          Out_Template_Pos : Integer := 0;
 
          procedure Add_Char (C : Character);
-         procedure Add_Constraint (N : N_String_Literal_Id);
+         procedure Add_Constraint
+           (N : N_String_Literal_Id; Indirect : Boolean := False);
          procedure Add_Template_Char (C : Character);
          procedure Next_Template_Char;
 
@@ -2045,7 +2095,9 @@ package body GNATLLVM.Exprs is
          -- Add_Constraint --
          --------------------
 
-         procedure Add_Constraint (N : N_String_Literal_Id) is
+         procedure Add_Constraint
+           (N : N_String_Literal_Id; Indirect : Boolean := False)
+         is
             Is_X86_Target : constant Boolean :=
               Is_x86_Family (Normalized_Target_Triple.all);
             Length        : constant Nat     := String_Length (Strval (N));
@@ -2070,10 +2122,28 @@ package body GNATLLVM.Exprs is
                Add_Char (',');
             end if;
 
+            --  LLVM marks indirect operands with '*', after the output
+            --  marker and before any constraint modifiers.
+
+            if Indirect then
+               if Get_Character (Get_String_Char (Strval (N), 1)) = '=' then
+                  Add_Char ('=');
+                  J := 2;
+               end if;
+
+               Add_Char ('*');
+            end if;
+
             while J <= Length loop
                C := Get_Character (Get_String_Char (Strval (N), J));
 
-               if not Is_X86_Target then
+               if C = '*' then
+                  --  GCC's register preference modifier is not LLVM's
+                  --  indirect marker, which we have already emitted.
+
+                  J := J + 1;
+
+               elsif not Is_X86_Target then
                   Add_Char (C);
                   J := J + 1;
 
@@ -2151,7 +2221,13 @@ package body GNATLLVM.Exprs is
          --  Output constraints come first
 
          if Present (Output_Variable) then
-            Add_Constraint (Output_Constraint);
+            Add_Constraint (Output_Constraint, Indirect_Output);
+            if Indirect_Output then
+               Input_Pos := Input_Pos + 1;
+               Args (Input_Pos) := Output_Val;
+               Element_Types (Input_Pos) :=
+                 Designated_Type (Type_Of (Output_Val));
+            end if;
          end if;
 
          --  Collect inputs and add their constraints
@@ -2160,20 +2236,30 @@ package body GNATLLVM.Exprs is
          Input := Asm_Input_Value;
          while Present (Input) loop
             Input_Pos := Input_Pos + 1;
-            Args (Input_Pos) := Get (Emit_Expression (Input), Object);
+            Constraint_Kind := Classify (Asm_Input_Constraint);
+            if Constraint_Kind = Memory_Constraint then
+               Args (Input_Pos) := Get (Emit_LValue (Input), Reference);
+               Element_Types (Input_Pos) :=
+                 Designated_Type (Type_Of (Args (Input_Pos)));
+            else
+               Args (Input_Pos) := Get (Emit_Expression (Input), Object);
+            end if;
 
             --  LLVM interprets integer asm immediates as signed. Widen
             --  nonstandard integer widths here so modular values retain
             --  their value when LLVM legalizes the operands. Use the same
             --  types for register inputs and outputs, including tied ones.
 
-            if Is_Integer_Type (Args (Input_Pos)) then
+            if Constraint_Kind = Value_Constraint
+              and then Is_Integer_Type (Args (Input_Pos))
+            then
                Args (Input_Pos) :=
                  Convert (Args (Input_Pos),
                           Asm_Operand_Type (Related_Type (Args (Input_Pos))));
             end if;
 
-            Add_Constraint (Asm_Input_Constraint);
+            Add_Constraint
+              (Asm_Input_Constraint, Constraint_Kind = Memory_Constraint);
             Next_Asm_Input;
             Input := Asm_Input_Value;
          end loop;
@@ -2258,7 +2344,8 @@ package body GNATLLVM.Exprs is
 
          Asm :=
            Inline_Asm
-             (Args, Output_Variable, Template (1 .. Out_Template_Pos),
+             (Args, (if Indirect_Output then Empty else Output_Variable),
+              Template (1 .. Out_Template_Pos),
               Constraints (1 .. Constraint_Pos), Fn_MD,
               Is_Asm_Volatile (N), False);
 
@@ -2267,11 +2354,17 @@ package body GNATLLVM.Exprs is
             Set_Asm_Location (+Result, ULL (Sloc (N)));
          end if;
 
-         --  If we have an output, store the result. Convert widened integers
-         --  back to the output type, and cast the output pointer to handle
-         --  LLVM's refusal of some output types.
+         for J in Args'Range loop
+            if Present (Element_Types (J)) then
+               Add_Asm_Element_Type
+                 (+Result, unsigned (J - Args'First), +Element_Types (J));
+            end if;
+         end loop;
 
-         if Present (Output_Variable) then
+         --  Only direct outputs return a value to store. Memory outputs
+         --  already refer to their destination storage.
+
+         if Present (Output_Variable) and then not Indirect_Output then
             if Is_Integer_Type (Output_Val) then
                Result := Convert (Result, Related_Type (Output_Val));
             end if;

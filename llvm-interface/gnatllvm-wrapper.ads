@@ -74,6 +74,15 @@ package GNATLLVM.Wrapper is
    procedure Add_Cold_Attribute (Func : Value_T)
      with Import, Convention => C, External_Name => "Add_Cold_Attribute";
 
+   procedure Set_Asm_Location (Call : Value_T; Location : ULL)
+     with Import, Convention => C, External_Name => "Set_Asm_Location";
+   --  Attach a GNAT source location as an inline asm diagnostic cookie
+
+   procedure Install_Asm_Diagnostic_Handler
+     (Ctx : Context_T; Callback : System.Address)
+     with Import, Convention => C,
+          External_Name => "Install_Asm_Diagnostic_Handler";
+
    procedure Add_Dereferenceable_Attribute
      (Func : Value_T; Idx : unsigned; Bytes : ULL)
      with Import, Convention => C,

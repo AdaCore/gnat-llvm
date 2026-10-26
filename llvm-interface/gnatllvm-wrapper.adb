@@ -20,6 +20,30 @@ with Uintp.LLVM;           use Uintp.LLVM;
 
 package body GNATLLVM.Wrapper is
 
+   -----------------------------
+   -- Classify_Asm_Constraint --
+   -----------------------------
+
+   function Classify_Asm_Constraint
+     (Target_Info       : Target_Info_T;
+      Constraint        : String;
+      Output_Constraint : String;
+      Is_Output         : Boolean) return Asm_Constraint_Kind
+   is
+      function Classify_Asm_Constraint_C
+        (Target_Info       : Target_Info_T;
+         Constraint        : String;
+         Output_Constraint : String;
+         Is_Output         : LLVM_Bool) return Asm_Constraint_Kind
+        with Import, Convention => C,
+             External_Name => "Classify_Asm_Constraint";
+
+   begin
+      return Classify_Asm_Constraint_C
+        (Target_Info, Constraint & ASCII.NUL,
+         Output_Constraint & ASCII.NUL, Boolean'Pos (Is_Output));
+   end Classify_Asm_Constraint;
+
    ----------------------------------
    -- Create_TBAA_Scalar_Type_Node --
    ----------------------------------

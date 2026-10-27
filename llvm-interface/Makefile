@@ -30,12 +30,15 @@ CLANG_CXXFLAGS :=
 CLANG_INCLUDE_DIR := $(abspath $(shell $(LLVM_CONFIG) --includedir)/../../clang/include)
 
 ifneq ($(wildcard $(CLANG_INCLUDE_DIR)/.),)
-  CLANG_CXXFLAGS := -I$(CLANG_INCLUDE_DIR) -I$(abspath $(shell $(LLVM_CONFIG) --obj-root)/tools/clang/include)
+  CLANG_CXXFLAGS := -isystem$(CLANG_INCLUDE_DIR) -isystem$(abspath $(shell $(LLVM_CONFIG) --obj-root)/tools/clang/include)
 endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
-ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS) -I.
+# The headers of LLVM and Clang are included as system headers, so that their
+# warnings do not stop a Debug build, which uses -Werror for our own code.
+LLVM_CXXFLAGS=$(patsubst -I%,-isystem%,$(shell $(LLVM_CONFIG) --cxxflags))
+ALL_CXXFLAGS=$(LLVM_CXXFLAGS) $(CXXFLAGS) $(CLANG_CXXFLAGS) -I.
 LLVM_INCLUDE_DIR=$(shell $(LLVM_CONFIG) --includedir)
 LLVM_VERSION=$(shell $(LLVM_CONFIG) --version | cut -d. -f1)
 

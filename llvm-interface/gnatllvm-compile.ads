@@ -20,6 +20,9 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 
+   Back_End_Called : Boolean := False;
+   --  True if we've been called by the front-end
+
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id);
    --  Generate LLVM from GNAT_Root and then compile it
 

@@ -19,6 +19,7 @@ with Opt;        use Opt;
 with Sem_Aux;    use Sem_Aux;
 with Sem_Util;   use Sem_Util;
 with Sinput;     use Sinput;
+with Snames;     use Snames;
 with Stand;      use Stand;
 with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -796,6 +797,7 @@ package body GNATLLVM.DebugInfo is
       Offset    : ULL                 := 0;
       Field_MDs : Metadata_Array (1 .. Ndim * 2);
       Idx       : Nat                 := Field_MDs'First;
+      Fortran   : constant Boolean    := Convention (GT) = Convention_Fortran;
 
    begin
       for J in 0 .. Ndim - 1 loop
@@ -803,18 +805,35 @@ package body GNATLLVM.DebugInfo is
             B_GT  : constant GL_Type := Array_Index_Sub_GT (GT, J);
             Align : constant Nat     := Get_Type_Alignment (B_GT);
             Ok : Boolean;
+            Name  : constant Int     := (if Fortran then Ndim - J - 1 else J);
 
          begin
             Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                             "LB" & To_String (J), S, Align, 0,
+                             "LB" & To_String (Name), S, Align, 0,
                              GT => B_GT);
             pragma Assert (Ok);
             Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                             "UB" & To_String (J), S, Align, 0,
+                             "UB" & To_String (Name), S, Align, 0,
                              GT => B_GT);
             pragma Assert (Ok);
          end;
       end loop;
+
+      if Fortran then
+         declare
+            Low  : Int := Field_MDs'First;
+            High : Int := Field_MDs'Last;
+            Elt  : Metadata_T;
+         begin
+            while Low < High loop
+               Elt := Field_MDs (Low);
+               Field_MDs (Low) := Field_MDs (High);
+               Field_MDs (High) := Elt;
+               Low := Low + 1;
+               High := High - 1;
+            end loop;
+         end;
+      end if;
 
       --  Compute the size taking into account the record alignment
 
@@ -1055,10 +1074,13 @@ package body GNATLLVM.DebugInfo is
       Comp_Ty    : constant GL_Type
          := Get_GL_Type (Comp_TE);
       Inner_Type : constant Metadata_T := Create_Type_Data (Comp_Ty);
-      Ranges     : Metadata_Array (0 .. Number_Dimensions (Array_TE) - 1);
+      N_Dims     : constant Int := Number_Dimensions (Array_TE) - 1;
+      Ranges     : Metadata_Array (0 .. N_Dims);
       Stride     : Metadata_T := No_Metadata_T;
       E_Index : Opt_N_Is_Index_Id := First_Index (Array_TE);
       Scope   : constant Metadata_T := Get_Scope_For (Array_TE);
+      Is_Fortran : constant Boolean :=
+        Convention (Array_TE) = Convention_Fortran;
    begin
       --  For arrays, get the component type's data.
 
@@ -1078,13 +1100,16 @@ package body GNATLLVM.DebugInfo is
             High_Exp : constant Metadata_T :=
               Convert_Bound_To_Metadata (GT, J, False, Is_Packed,
                                          Index_Type, High_Bound (E_Range), M);
+
+            Index : constant Int := (if Is_Fortran then N_Dims - J else J);
+
          begin
             if Low_Exp = No_Metadata_T or else High_Exp = No_Metadata_T then
                --  LLVM does not allow a nameless unspecified type, so use
                --  the original name in this instance.
                return DI_Create_Unspecified_Type (Get_Name (Array_TE));
             end if;
-            if J = 0 then
+            if Index = 0 then
                if Component_Size (Array_TE) /= Esize (Comp_TE) then
                   Stride :=
                     Convert_To_Dwarf_Expression (Component_Size (Array_TE),
@@ -1096,7 +1121,7 @@ package body GNATLLVM.DebugInfo is
                     Convert_To_Dwarf_Expression (Esize (Comp_TE), Comp_TE);
                end if;
             end if;
-            Ranges (J) :=
+            Ranges (Index) :=
               Create_Subrange_Type
                 (DI_Builder, Scope, "", No_Metadata_T,
                  No_Line_Number, 0, 0, DI_Flag_Zero,

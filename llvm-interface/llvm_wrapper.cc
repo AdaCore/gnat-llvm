@@ -17,6 +17,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
@@ -89,6 +90,52 @@ extern "C" MDNode *Create_TBAA_Root(MDBuilder *MDHelper) {
 
 extern "C" void Add_Cold_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::Cold);
+}
+
+extern "C" void Add_Asm_Element_Type(CallBase *Call, unsigned Index,
+                                     Type *ElementType) {
+  Call->addParamAttr(
+      Index,
+      Attribute::get(Call->getContext(), Attribute::ElementType, ElementType));
+}
+
+extern "C" void Set_Asm_Location(Instruction *Call, uint64_t Location) {
+  auto &Ctx = Call->getContext();
+  auto *Loc = ConstantAsMetadata::get(
+      ConstantInt::get(Type::getInt64Ty(Ctx), Location));
+  Call->setMetadata("srcloc", MDNode::get(Ctx, Loc));
+}
+
+using AsmDiagnosticCallback = void (*)(uint64_t, const char *, int);
+
+namespace {
+class AsmDiagnosticHandler : public llvm::DiagnosticHandler {
+  AsmDiagnosticCallback Callback;
+  std::unique_ptr<llvm::DiagnosticHandler> Previous;
+
+public:
+  AsmDiagnosticHandler(AsmDiagnosticCallback Callback,
+                       std::unique_ptr<llvm::DiagnosticHandler> Previous)
+      : Callback(Callback), Previous(std::move(Previous)) {}
+
+  bool handleDiagnostics(const llvm::DiagnosticInfo &DI) override {
+    if (const auto *Asm = dyn_cast<DiagnosticInfoInlineAsm>(&DI)) {
+      if (Asm->getLocCookie() &&
+          (DI.getSeverity() == DS_Error || DI.getSeverity() == DS_Warning)) {
+        Callback(Asm->getLocCookie(), Asm->getMsgStr().str().c_str(),
+                 DI.getSeverity() == DS_Warning);
+        return true;
+      }
+    }
+    return Previous && Previous->handleDiagnostics(DI);
+  }
+};
+} // namespace
+
+extern "C" void Install_Asm_Diagnostic_Handler(LLVMContext *Ctx,
+                                               AsmDiagnosticCallback Callback) {
+  Ctx->setDiagnosticHandler(std::make_unique<AsmDiagnosticHandler>(
+      Callback, Ctx->getDiagnosticHandler()));
 }
 
 // ??? This function and its uses should be removed when System.Address
@@ -535,6 +582,39 @@ struct ClangTargetInfo {
 
   TargetInfo *Info;
 };
+
+// The kinds of asm constraints that we're interested in. Note the matching Ada
+// definition in gnatllvm-wrapper.ads.
+enum Asm_Constraint_Kind {
+  Invalid_Constraint = -1,
+  Value_Constraint = 0,
+  Memory_Constraint = 1,
+  Read_Write_Constraint = 2
+};
+
+extern "C" Asm_Constraint_Kind
+Classify_Asm_Constraint(ClangTargetInfo *CTI, const char *Constraint,
+                        const char *OutputConstraint, bool IsOutput) {
+  TargetInfo::ConstraintInfo Info(Constraint, "");
+  if (IsOutput) {
+    if (!CTI->Info->validateOutputConstraint(Info))
+      return Invalid_Constraint;
+    if (Info.isReadWrite())
+      return Read_Write_Constraint;
+  } else {
+    SmallVector<TargetInfo::ConstraintInfo, 1> Outputs;
+    if (*OutputConstraint) {
+      Outputs.emplace_back(OutputConstraint, "");
+      if (!CTI->Info->validateOutputConstraint(Outputs.back()))
+        return Invalid_Constraint;
+    }
+    if (!CTI->Info->validateInputConstraint(Outputs, Info))
+      return Invalid_Constraint;
+  }
+
+  return Info.allowsMemory() && !Info.allowsRegister() ? Memory_Constraint
+                                                       : Value_Constraint;
+}
 
 extern "C" ClangTargetInfo *Get_Target_Info(const char *TargetTriple,
                                             const char *CPU, const char *ABI,

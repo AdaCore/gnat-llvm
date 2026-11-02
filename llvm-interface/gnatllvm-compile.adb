@@ -799,7 +799,8 @@ package body GNATLLVM.Compile is
                   Expr : constant N_Subexpr_Id := Expression (N);
 
                begin
-                  if Library_Level and then not Is_Static_Address (Expr) then
+                  if Library_Level and then not Is_Static_Or_Address (Expr)
+                  then
                      Add_To_Elab_Proc (Expr, For_GT => Full_GL_Type (Expr));
                   else
                      Set_Value (Expr, Emit_Expression (Expr));

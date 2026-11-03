@@ -1,4 +1,3 @@
-
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
@@ -1468,13 +1467,13 @@ package body GNATLLVM.Exprs is
                end if;
 
                if Attr = Attribute_Length then
-                     V := Get_Array_Length
-                       (Full_Etype (P_GT), Dim, Array_Descr,
-                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
+                  V := Get_Array_Length
+                         (Full_Etype (P_GT), Dim, Array_Descr,
+                          For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                else
                   V := Get_Array_Bound
-                    (P_GT, Dim, Attr = Attribute_First, Array_Descr,
-                     For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
+                         (P_GT, Dim, Attr = Attribute_First, Array_Descr,
+                          For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                end if;
             else
                pragma Assert (Decls_Only);
@@ -1810,8 +1809,8 @@ package body GNATLLVM.Exprs is
       then
          declare
             Size : constant GL_Value :=
-              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
-                            For_Assignment => True);
+              Compute_Size_In_Bytes (Dest_GT, Related_Type (Src), Dest, Src,
+                                     For_Assignment => True);
 
          begin
             if Size /= 0 then
@@ -1836,7 +1835,7 @@ package body GNATLLVM.Exprs is
 
       elsif (No (E) or else (Is_Loadable_Type (Full_GL_Type (E))
                              and then Full_GL_Type (E) = Related_Type (Dest)))
-        and then (No (Value) or else Is_Loadable_Type (Value))
+        and then Is_Loadable_Type (Src_GT)
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
@@ -1857,8 +1856,8 @@ package body GNATLLVM.Exprs is
             Need_Volatile    : constant Boolean :=
               Is_Volatile (Src) or else Is_Volatile (Dest);
             Size             : GL_Value         :=
-              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
-                            For_Assignment => True);
+              Compute_Size_In_Bytes (Dest_GT, Related_Type (Src), Dest, Src,
+                                     For_Assignment => True);
             Mem_Src, Mem_Dst : GL_Value;
 
          begin
@@ -1880,7 +1879,7 @@ package body GNATLLVM.Exprs is
 
             if Src_R = Reference_To_Bounds_And_Data then
                pragma Assert (Dest_R = Src_R);
-               Size := Size + Get_Bound_Size (Related_Type (Src));
+               Size := Size + Get_Bound_Size_In_Bytes (Related_Type (Src));
             end if;
 
             --  Compute the size in bytes and any pointer casts

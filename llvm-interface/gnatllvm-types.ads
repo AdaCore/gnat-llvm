@@ -458,13 +458,13 @@ package GNATLLVM.Types is
    --  Max_Size is true, we return the maximum size of the type. If
    --  No_Padding is true, we don't count any padding of the type.
 
-   function Compute_Size
+   function Compute_Size_In_Bytes
      (Left_GT, Right_GT       : GL_Type;
       Left_Value, Right_Value : GL_Value;
       For_Assignment          : Boolean := False) return GL_Value
      with Pre  => Present (Left_GT) and then Present (Right_GT)
                   and then Present (Right_Value),
-          Post =>  Present (Compute_Size'Result);
+          Post =>  Present (Compute_Size_In_Bytes'Result);
    --  Used for comparison and assignment: compute the size in bytes to be
    --  used in the operation. For_Assignment says which
    --  operation. Right_Value must be specified. Left_Value is optional and

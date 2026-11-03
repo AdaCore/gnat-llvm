@@ -173,23 +173,6 @@ package body GNATLLVM.Instructions is
       Position_Builder_At_End (IR_Builder, BB);
    end Position_Builder_At_End;
 
-   ---------------
-   -- To_Bytes --
-   ---------------
-
-   function To_Bytes (V : GL_Value) return GL_Value is
-      In_Bytes : GL_Value := (V + (BPU - 1)) / BPU;
-
-   begin
-      --  If the input was Bitsize_Type, convert it to Size_Type
-
-      if Related_Type (In_Bytes) = Bitsize_GL_Type then
-         In_Bytes := Convert_GT (In_Bytes, Size_GL_Type);
-      end if;
-
-      return Set_Alignment (In_Bytes, Alignment (V) / BPU);
-   end To_Bytes;
-
    ----------------------
    -- No_Overflow_Test --
    ----------------------
@@ -676,6 +659,10 @@ package body GNATLLVM.Instructions is
          Set_Alignment (Result, Alignment (LHS) / 4);
       elsif Is_Const_Int_Value (RHS, 8) then
          Set_Alignment (Result, Alignment (LHS) / 8);
+      elsif Is_Const_Int_Value (RHS, 16) then
+         Set_Alignment (Result, Alignment (LHS) / 16);
+      elsif Is_Const_Int_Value (RHS, 32) then
+         Set_Alignment (Result, Alignment (LHS) / 32);
       else
          Clear_Alignment (Result);
       end if;

@@ -980,8 +980,8 @@ package body GNATLLVM.Arrays is
       MD : constant MD_Type := Create_Array_Bounds_Type (GT);
    begin
       return Align_To_In_Bytes (Get_Type_Size_In_Bytes (MD),
-                                To_Bytes (Get_Type_Alignment (MD)),
-                                To_Bytes (Get_Type_Alignment (GT)));
+                                Get_Type_Alignment_In_Bytes (MD),
+                                Get_Type_Alignment_In_Bytes (GT));
    end Get_Bound_Size_In_Bytes;
 
    -------------------------
@@ -1206,7 +1206,7 @@ package body GNATLLVM.Arrays is
       end if;
 
       Build_MemSet (Get (To_Primitive (LValue, No_Copy => True), Reference),
-                    Value, Size, To_Bytes (Get_Type_Alignment (GT)),
+                    Value, Size, Get_Type_Alignment_In_Bytes (GT),
                     Is_Volatile (LValue),
                     TBAA => Compute_TBAA_Access (LValue, No_GL_Value, Size));
    end Emit_Single_Aggregate;

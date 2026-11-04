@@ -1308,7 +1308,7 @@ package body GNATLLVM.GLValue is
       E     : Entity_Id := Empty;
       Align : Nat       := 0) return Nat
    is
-      GT_Align  : constant Nat := Get_Type_Alignment (Default_GL_Type (GT));
+      GT_Align  : constant Nat := Get_Type_Alignment (GT);
       E_Align   : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
          then To_Bits (+Alignment (E)) else BPU);
@@ -1724,6 +1724,15 @@ package body GNATLLVM.GLValue is
    is
      (Get_Type_Alignment (Related_Type (V), Use_Specified => Use_Specified));
 
+   ---------------------------------
+   -- Get_Type_Alignment_In_Bytes --
+   ---------------------------------
+
+   function Get_Type_Alignment_In_Bytes
+     (V : GL_Value; Use_Specified : Boolean := True) return Nat
+   is
+     (To_Bytes (Get_Type_Alignment (V, Use_Specified)));
+
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
@@ -1733,6 +1742,15 @@ package body GNATLLVM.GLValue is
    is
      (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment
                                      (GT, Use_Specified => Use_Specified)))));
+
+   ---------------------------------
+   -- Get_Type_Alignment_In_Bytes --
+   ---------------------------------
+
+   function Get_Type_Alignment_In_Bytes
+     (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
+   is
+     (To_Bytes (Get_Type_Alignment (GT, Use_Specified)));
 
    -----------------------
    -- GT_Check_Overflow --

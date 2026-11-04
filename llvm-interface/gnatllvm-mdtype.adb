@@ -1239,6 +1239,13 @@ package body GNATLLVM.MDType is
    function Get_Type_Alignment (MD : MD_Type) return Nat is
      (Get_Type_Alignment (Type_T'(+MD)));
 
+   ---------------------------------
+   -- Get_Type_Alignment_In_Bytes --
+   ---------------------------------
+
+   function Get_Type_Alignment_In_Bytes (MD : MD_Type) return Nat is
+     (To_Bytes (Get_Type_Alignment (MD)));
+
    -------------------
    -- Contains_Void --
    -------------------

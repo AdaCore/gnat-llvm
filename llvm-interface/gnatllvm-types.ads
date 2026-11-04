@@ -328,21 +328,34 @@ package GNATLLVM.Types is
    function Get_Scalar_Size (T : Type_T) return Nat is
      (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T)))
      with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
+   function Get_Scalar_Size_In_Bytes (T : Type_T) return Nat is
+     (To_Bytes (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T))))
+     with Pre => Present (T);
+   --  Return the size of an LLVM type, in bits or bytes
 
    function Get_Type_Alignment (T : Type_T) return Nat is
      (To_Bits (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
      with Pre => Present (T);
-   --  Return the alignment of an LLVM type, in bits
+   function Get_Type_Alignment_In_Bytes (T : Type_T) return Nat is
+     (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
+     with Pre => Present (T);
+   --  Return the alignment of an LLVM type, expressed either in bits of bytes
 
    function Get_Preferred_Type_Alignment (T : Type_T) return Nat is
      (To_Bits (Nat (Preferred_Alignment_Of_Type (Module_Data_Layout, T))))
      with Pre => Present (T);
-   --  Return the preferred alignment of an LLVM type, in bits
+   function Get_Preferred_Type_Alignment_In_Bytes (T : Type_T) return Nat is
+     (Nat (Preferred_Alignment_Of_Type (Module_Data_Layout, T)))
+     with Pre => Present (T);
+   --  Return the preferred alignment of an LLVM type, expressed in bits or
+   --  bytes.
 
    function Get_Type_Alignment (T : Type_T) return GL_Value is
      (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
-   --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
+   function Get_Type_Alignment_In_Bytes (T : Type_T) return GL_Value is
+     (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment_In_Bytes (T)))));
+   --  Return the alignment of an LLVM type, expressed either in bits or
+   --  bytes, as an LLVM constant of type Bitsize_Type.
 
    function ULL_Align (C : ULL) return Nat;
    --  Return the maximum alignment that a constant C, representing a
@@ -425,6 +438,11 @@ package GNATLLVM.Types is
 
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
+     with Pre => Present (GT);
+   function Get_Type_Alignment_In_Bytes
+     (GT : GL_Type; Use_Specified : Boolean := True) return Nat
+   is
+     (To_Bytes (Get_Type_Alignment (GT, Use_Specified)))
      with Pre => Present (GT);
    --  Return the alignment of a type. If Use_Specified is False, ignore a
    --  specified alignment.

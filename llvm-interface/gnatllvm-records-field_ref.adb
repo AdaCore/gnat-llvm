@@ -861,11 +861,10 @@ package body GNATLLVM.Records.Field_Ref is
          raise Program_Error with "invalid bitfield load";
       end if;
 
-      --  At this point, we have an integer type and now have to
-      --  possibly convert it to the type of the field.  There are a
-      --  few possibilies that type. If it's an integer, we
-      --  may have to extend or truncate to the appropriate integer
-      --  type.
+      --  At this point, we have an integer type and now have to possibly
+      --  convert it to the type of the field.  There are a few possibilies
+      --  for that type. If it's an integer, we may have to extend or
+      --  truncate to the appropriate integer type.
 
       if Is_Integer_Type (F_GT) or else Is_Enumeration_Type (F_GT) then
          if Num_Bits = F_Bits then
@@ -878,17 +877,17 @@ package body GNATLLVM.Records.Field_Ref is
             return S_Ext (Result, F_GT);
          end if;
 
-         --  If the result is a pointer or FP type, the sizes must match
-         --  and we do the conversion by casting bits.
+      --  If the result is a pointer or FP type, the sizes must match and
+      --  we do the conversion by casting bits.
 
       elsif Is_Floating_Point_Type (F_GT) then
          return Bit_Cast (Result, F_GT);
       elsif  Is_Access_Type (F_GT) then
          return Int_To_Ptr (Result, F_GT);
 
-         --  The final case is when we have a small structure. In that case,
-         --  the bitcast instruction isn't supported and we have no choice
-         --  but to store the data into memory.
+      --  The final case is when we have a small structure. In that case,
+      --  the bitcast instruction isn't supported and we have no choice
+      --  but to store the data into memory.
 
       else
          declare

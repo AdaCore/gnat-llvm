@@ -1165,12 +1165,23 @@ package body GNATLLVM.Variables is
             return Is_No_Elab_For_Convert_Entity (Entity (N), GT, Not_Symbolic,
                                                   Restrict_Types);
 
-         when N_Selected_Component =>
+         --  For a field reference, the prefix must not need elaboration,
+         --  the field must be of a native type, and the field must not
+         --  be a bitfield of an aggregate type. The latter is because that
+         --  will need to be handled via pointer punning, which we can't
+         --  do statically.
 
-            return not Is_Nonnative_Type (Full_GL_Type (Entity
-                                                          (Selector_Name (N))))
-              and then Is_No_Elab_Needed (Prefix (N), Not_Symbolic,
-                                          Restrict_Types);
+         when N_Selected_Component =>
+            declare
+               F    : constant Record_Field_Kind_Id := Selector_Field (N);
+               F_GT : constant GL_Type              := Full_GL_Type (F);
+            begin
+               return not Is_Nonnative_Type (F_GT)
+                 and then not (Is_Bitfield (F)
+                               and then Is_Aggregate_Type (F_GT))
+                 and then Is_No_Elab_Needed (Prefix (N), Not_Symbolic,
+                                             Restrict_Types);
+            end;
 
          --  If this is extracting constant offsets from something that we
          --  can elaborate statically, we can elaborate this statically.

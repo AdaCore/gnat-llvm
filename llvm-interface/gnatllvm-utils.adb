@@ -24,9 +24,10 @@ with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.GLType;  use GNATLLVM.GLType;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen;           use GNATLLVM.Codegen;
+with GNATLLVM.GLType;            use GNATLLVM.GLType;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Wrapper;           use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
@@ -326,12 +327,11 @@ package body GNATLLVM.Utils is
             E := Entity (N);
             return Is_Object (E)
               and then (Is_Full_Access (E)
-                          or else Is_Full_Access (Full_Etype (E)));
+                        or else Is_Full_Access (Full_Etype (E)));
 
          when N_Selected_Component =>
-            E := Entity (Selector_Name (N));
-            return Is_Full_Access (E)
-              or else Is_Full_Access (Full_Etype (E));
+            E := Selector_Field (N);
+            return Is_Full_Access (E) or else Is_Full_Access (Full_Etype (E));
 
          when N_Indexed_Component | N_Explicit_Dereference =>
             return Is_Full_Access (Full_Etype (N));

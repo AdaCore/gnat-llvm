@@ -313,7 +313,7 @@ package body GNATLLVM.Exprs is
 
       elsif Is_Selected then
          declare
-            Fld  : constant Record_Field_Kind_Id := Entity (Selector_Name (N));
+            Fld  : constant Record_Field_Kind_Id := Selector_Field (N);
 
          begin
             --  If we want field processing for all fields or if this is a
@@ -1513,7 +1513,7 @@ package body GNATLLVM.Exprs is
                F   := Entity (Pref);
                Val := No_GL_Value;
             elsif Nkind (Pref) = N_Selected_Component then
-               F   := Entity (Selector_Name (Pref));
+               F   := Selector_Field (Pref);
                Val := Emit (Prefix (Pref));
             else
                pragma Assert (Attr = Attribute_Bit);

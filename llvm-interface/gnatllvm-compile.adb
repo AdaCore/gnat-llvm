@@ -1314,7 +1314,7 @@ package body GNATLLVM.Compile is
                     (Build_Field_Load (Emit (Prefix (N),
                                              For_LHS    => For_LHS,
                                              Prefer_LHS => Prefer_LHS),
-                                       Entity (Selector_Name (N)),
+                                       In_F       => Selector_Field (N),
                                        LHS        => LHS,
                                        For_LHS    => For_LHS,
                                        Prefer_LHS => Prefer_LHS,

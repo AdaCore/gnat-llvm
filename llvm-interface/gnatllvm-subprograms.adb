@@ -2377,7 +2377,7 @@ package body GNATLLVM.Subprograms is
          while not Our_Bitfield loop
             case Nkind (N) is
                when N_Selected_Component =>
-                  if Is_Bitfield_By_Rep (Entity (Selector_Name (N))) then
+                  if Is_Bitfield_By_Rep (Selector_Field (N)) then
                      Our_Bitfield := True;
                   end if;
 

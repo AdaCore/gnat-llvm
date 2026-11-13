@@ -23,21 +23,22 @@ with Restrict; use Restrict;
 with Snames;   use Snames;
 with Table;    use Table;
 
-with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
-with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
-with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
-with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Variables;    use GNATLLVM.Variables;
+with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
+with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
+with GNATLLVM.Builtins;          use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;           use GNATLLVM.Codegen;
+with GNATLLVM.Compile;           use GNATLLVM.Compile;
+with GNATLLVM.Conversions;       use GNATLLVM.Conversions;
+with GNATLLVM.Environment;       use GNATLLVM.Environment;
+with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
+with GNATLLVM.GLType;            use GNATLLVM.GLType;
+with GNATLLVM.Records;           use GNATLLVM.Records;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Subprograms;       use GNATLLVM.Subprograms;
+with GNATLLVM.Types.Create;      use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;             use GNATLLVM.Utils;
+with GNATLLVM.Variables;        use GNATLLVM.Variables;
 
 package body GNATLLVM.Types is
 
@@ -1585,8 +1586,7 @@ package body GNATLLVM.Types is
       E      : constant Entity_Id            :=
         (if    Is_Entity_Name (Prefix (N)) then Entity (Prefix (N))
          elsif Nkind (Prefix (N)) = N_Selected_Component
-         then  Entity (Selector_Name (Prefix (N)))
-         else  Empty);
+         then  Selector_Field (Prefix (N)) else  Empty);
       Use_E  : constant Entity_Id            :=
          (if Present (E) then E else TE);
       Our_E  : constant Entity_Id            :=

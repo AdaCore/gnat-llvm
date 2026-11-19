@@ -44,7 +44,7 @@ package GNATLLVM.Codegen is
    CPU             : String_Access  := null;
    --  Name of the specific CPU for this compilation.
 
-   ABI             : String_Access := new String'("");
+   ABI             : String_Access  := new String'("");
    --  Name of the ABI to use during code generation.
 
    Features        : String_Access  := new String'("");

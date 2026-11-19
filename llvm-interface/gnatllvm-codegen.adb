@@ -810,7 +810,7 @@ package body GNATLLVM.Codegen is
          end;
       end if;
 
-      if ABI = null then
+      if ABI.all = "" then
          declare
             New_ABI : constant String :=
               Get_Target_Default_ABI (Normalized_Target_Triple.all,
@@ -818,6 +818,7 @@ package body GNATLLVM.Codegen is
                                       CPU.all);
          begin
             if New_ABI /= "" then
+               Free (ABI);
                ABI := new String'(New_ABI);
             end if;
          end;
